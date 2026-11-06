@@ -147,3 +147,11 @@
 .crop-mask { position: absolute; inset: 0; pointer-events: none; }
 .crop-zoom { display: flex; align-items: center; gap: 10px; font-weight: 600; font-size: 14px; width: 100%; }
 .crop-zoom input { flex: 1; accent-color: var(--green); }
+.outfit-grid { display: grid; gap: 8px; }
+.outfit-row { display: grid; grid-template-columns: 70px minmax(0, 1fr); align-items: start; gap: 8px; }
+.outfit-part { font-size: 12.5px; font-weight: 700; color: var(--muted); padding-top: 7px; text-transform: uppercase; letter-spacing: 0.06em; }
+.outfit-chips { display: flex; flex-wrap: wrap; gap: 4px; }
+.outfit-chips .fchip { background: var(--surface-2); height: 30px; }
+.outfit-chips .fchip.is-on { background: var(--surface); box-shadow: 0 0 0 2px var(--gold); color: var(--ink); }
+.danger-zone { display: grid; gap: 10px; padding: 14px 16px; border-radius: var(--r-md); border: 1px solid color-mix(in srgb, var(--red) 30%, var(--line)); background: color-mix(in srgb, var(--red-soft) 50%, var(--surface)); }
+@media (max-width: 480px) { .outfit-row { grid-template-columns: minmax(0, 1fr); } .outfit-part { padding-top: 0; } }

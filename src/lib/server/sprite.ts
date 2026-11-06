@@ -7,6 +7,7 @@
 import sharp from 'sharp';
 import * as gifencNs from 'gifenc';
 import type { Activity } from '../activities';
+import type { Outfit } from '../outfit';
 
 const gifencMod = (gifencNs as unknown as { GIFEncoder?: unknown; default: typeof gifencNs.default }).GIFEncoder ? gifencNs : gifencNs.default;
 const { GIFEncoder, quantize, applyPalette } = gifencMod as typeof gifencNs.default;
@@ -24,7 +25,27 @@ const P = {
   jeans: [52, 74, 132], jeansDk: [34, 48, 92], boot: [64, 42, 34], brown: [122, 85, 48],
   snow: [236, 242, 246], snowDk: [190, 204, 214], carrot: [255, 138, 42], blue: [90, 184, 255], mug: [196, 52, 52],
   cocoa: [110, 66, 40], steam: [235, 235, 240], tree: [38, 138, 80], treeDk: [20, 92, 54],
+  blueTop: [58, 98, 178], blueTopDk: [36, 62, 124], navy: [34, 46, 90], navyDk: [22, 30, 62],
+  gray: [150, 152, 160], grayDk: [104, 106, 116], black: [44, 42, 50], blackDk: [26, 24, 30],
+  antler: [138, 96, 58], antlerDk: [96, 64, 36],
 } satisfies Record<string, RGB>;
+
+/** Colours for each outfit choice. */
+const TOPS: Record<Outfit['top'], { base: RGB; dark: RGB; band: RGB; dots: RGB; pattern?: 'stripes' | 'flakes' | 'hood' }> = {
+  red: { base: P.red, dark: P.redDk, band: P.green, dots: P.white },
+  green: { base: P.green, dark: P.greenDk, band: P.red, dots: P.white },
+  blue: { base: P.blueTop, dark: P.blueTopDk, band: P.white, dots: P.red },
+  stripes: { base: P.white, dark: P.whiteDk, band: P.red, dots: P.red, pattern: 'stripes' },
+  snowflake: { base: P.navy, dark: P.navyDk, band: P.white, dots: P.white, pattern: 'flakes' },
+  hoodie: { base: P.gray, dark: P.grayDk, band: P.grayDk, dots: P.grayDk, pattern: 'hood' },
+};
+const PANTS: Record<Outfit['pants'], [RGB, RGB]> = {
+  jeans: [P.jeans, P.jeansDk], red: [P.red, P.redDk], green: [P.green, P.greenDk], black: [P.black, P.blackDk],
+};
+const MITTENS: Record<Outfit['mittens'], [RGB, RGB]> = {
+  green: [P.green, P.greenDk], red: [P.red, P.redDk], white: [P.white, P.whiteDk], blue: [P.blue, P.blueTopDk],
+};
+export const DEFAULT_OUTFIT: Outfit = { hat: 'santa', top: 'red', pants: 'jeans', shoes: 'boots', scarf: 'none', mittens: 'green' };
 
 class Canvas {
   px = Buffer.alloc(SPRITE * SPRITE * 4);
@@ -123,46 +144,100 @@ interface Pose {
   seated?: boolean;
 }
 
-function drawBody(cv: Canvas, p: Pose) {
+function drawBody(cv: Canvas, p: Pose, o: Outfit) {
   const x = CX + p.dx, top = HEAD_Y + HEAD_H - 2 + p.bob; // shoulders just under the chin
+  const [leg, legDk] = PANTS[o.pants];
+  const t = TOPS[o.top];
   if (!p.seated) {
-    // legs + boots
-    cv.rect(x - 10 + p.lStep, top + 22 - p.lFoot, 9, 12, P.jeans);
-    cv.rect(x + 1 + p.rStep, top + 22 - p.rFoot, 9, 12, P.jeans);
-    cv.rect(x - 10 + p.lStep, top + 22 - p.lFoot, 2, 12, P.jeansDk);
-    cv.rect(x - 11 + p.lStep, top + 33 - p.lFoot, 11, 4, P.boot);
-    cv.rect(x + 1 + p.rStep, top + 33 - p.rFoot, 11, 4, P.boot);
+    cv.rect(x - 10 + p.lStep, top + 22 - p.lFoot, 9, 12, leg);
+    cv.rect(x + 1 + p.rStep, top + 22 - p.rFoot, 9, 12, leg);
+    cv.rect(x - 10 + p.lStep, top + 22 - p.lFoot, 2, 12, legDk);
+    const shoe = (sx: number, sy: number) => {
+      if (o.shoes === 'boots') { cv.rect(sx - 1, sy, 11, 4, P.boot); cv.rect(sx - 1, sy, 11, 1, P.brown); }
+      else if (o.shoes === 'sneakers') { cv.rect(sx - 1, sy + 1, 11, 3, P.white); cv.rect(sx - 1, sy + 3, 11, 1, P.whiteDk); cv.rect(sx + 2, sy + 1, 4, 1, P.red); }
+      else { cv.rect(sx - 1, sy, 10, 4, P.green); cv.rect(sx + 8, sy - 1, 3, 2, P.green); cv.set(sx + 11, sy - 2, P.gold); }
+    };
+    shoe(x - 10 + p.lStep, top + 33 - p.lFoot);
+    shoe(x + 1 + p.rStep, top + 33 - p.rFoot);
   }
-  // sweater
-  cv.rect(x - 13, top, 26, 23, P.red);
-  cv.rect(x - 13, top, 3, 23, P.redDk);
-  cv.rect(x - 13, top + 9, 26, 4, P.green);
-  for (let i = 0; i < 6; i++) cv.set(x - 11 + i * 4, top + 10, P.white), cv.set(x - 9 + i * 4, top + 11, P.white);
-  cv.rect(x - 13, top + 21, 26, 2, P.white);
-  cv.rect(x - 2, top + 15, 3, 2, P.gold);
-  // arms: shoulder → hand, with green mittens
+  // top
+  cv.rect(x - 13, top, 26, 23, t.base);
+  cv.rect(x - 13, top, 3, 23, t.dark);
+  if (t.pattern === 'stripes') {
+    for (let r = 2; r < 21; r += 5) cv.rect(x - 13, top + r, 26, 2, P.red);
+  } else if (t.pattern === 'flakes') {
+    for (const [fx, fy] of [[-7, 5], [5, 4], [-2, 14], [8, 15]] as const) {
+      cv.set(x + fx, top + fy, P.white); cv.set(x + fx - 1, top + fy, P.white); cv.set(x + fx + 1, top + fy, P.white);
+      cv.set(x + fx, top + fy - 1, P.white); cv.set(x + fx, top + fy + 1, P.white);
+    }
+  } else if (t.pattern === 'hood') {
+    cv.rect(x - 2, top + 8, 4, 10, t.dark);              // zip
+    cv.rect(x - 8, top + 15, 16, 5, t.dark);              // pocket
+    cv.rect(x - 4, top + 2, 1, 6, P.white); cv.rect(x + 3, top + 2, 1, 6, P.white); // drawstrings
+  } else {
+    cv.rect(x - 13, top + 9, 26, 4, t.band);
+    for (let i = 0; i < 6; i++) cv.set(x - 11 + i * 4, top + 10, t.dots), cv.set(x - 9 + i * 4, top + 11, t.dots);
+    cv.rect(x - 2, top + 15, 3, 2, P.gold);
+  }
+  cv.rect(x - 13, top + 21, 26, 2, t.pattern === 'hood' ? t.dark : P.white);
+  // arms, sleeves match the top, mittens chosen
+  const [mit, mitDk] = MITTENS[o.mittens];
   const sl: [number, number] = [x - 12, top + 4], sr: [number, number] = [x + 12, top + 4];
-  const hand = (s: [number, number], h: [number, number]) => {
+  const hand = (sh: [number, number], h: [number, number]) => {
     const hx = h[0] + p.dx, hy = h[1] + p.bob;
-    cv.limb(s[0], s[1], hx, hy, 6, P.red);
-    cv.rect(hx - 3, hy - 3, 7, 7, P.green);
-    cv.rect(hx - 3, hy + 2, 7, 1, P.greenDk);
+    cv.limb(sh[0], sh[1], hx, hy, 6, t.pattern === 'stripes' ? P.red : t.base);
+    cv.rect(hx - 3, hy - 3, 7, 7, mit);
+    cv.rect(hx - 3, hy + 2, 7, 1, mitDk);
   };
   hand(sl, p.lHand); hand(sr, p.rHand);
+  // scarf around the neck, tail hanging over the chest
+  if (o.scarf !== 'none') {
+    const a: RGB = o.scarf === 'green' ? P.green : P.red, b: RGB = o.scarf === 'striped' ? P.white : o.scarf === 'green' ? P.greenDk : P.redDk;
+    for (let i = 0; i < 28; i++) cv.rect(x - 14 + i, top - 1, 1, 4, o.scarf === 'striped' && Math.floor(i / 3) % 2 ? b : a);
+    for (let j = 0; j < 9; j++) cv.rect(x + 4, top + 3 + j, 5, 1, o.scarf === 'striped' && Math.floor(j / 3) % 2 ? b : a);
+    cv.rect(x + 4, top + 12, 5, 1, b);
+  }
 }
 
-function drawHat(cv: Canvas, bob: number, dx: number, sway: number, drop = 0) {
+function drawHat(cv: Canvas, bob: number, dx: number, sway: number, drop: number, hat: Outfit['hat']) {
   const x0 = CX - HEAD_W / 2 + dx, y = HEAD_Y + bob + drop;
-  // red cone flopping to the right, white brim and pompom
-  for (let r = 0; r < 12; r++) {
-    const w = Math.round(HEAD_W - 2 - r * 2.4);
-    cv.rect(x0 + 1 + Math.round(r * 1.5) + Math.round((sway * r) / 12), y - 1 - r, Math.max(3, w), 1, r < 3 ? P.red : P.red);
+  if (hat === 'none') return;
+  if (hat === 'santa' || hat === 'elf') {
+    const cone: RGB = hat === 'santa' ? P.red : P.green, coneDk: RGB = hat === 'santa' ? P.redDk : P.greenDk;
+    const brim: RGB = hat === 'santa' ? P.white : P.red, brimDk: RGB = hat === 'santa' ? P.whiteDk : P.redDk;
+    const tall = hat === 'elf' ? 15 : 12;
+    for (let r = 0; r < tall; r++) {
+      const w = Math.round(HEAD_W - 2 - r * (hat === 'elf' ? 2 : 2.4));
+      cv.rect(x0 + 1 + Math.round(r * (hat === 'elf' ? 1.1 : 1.5)) + Math.round((sway * r) / tall), y - 1 - r, Math.max(3, w), 1, cone);
+    }
+    cv.rect(x0 + 2, y - 4, 4, 3, coneDk);
+    cv.rect(x0 - 2, y - 1, HEAD_W + 4, 5, brim);
+    cv.rect(x0 - 2, y + 3, HEAD_W + 4, 1, brimDk);
+    const px = x0 + HEAD_W - (hat === 'elf' ? 6 : 2) + sway, py = y - (hat === 'elf' ? 18 : 14);
+    if (hat === 'santa') { cv.rect(px, py, 6, 6, P.white); cv.rect(px + 1, py + 5, 4, 1, P.whiteDk); }
+    else { cv.rect(px, py, 5, 5, P.gold); cv.rect(px + 1, py + 4, 3, 1, P.goldDk); }
+    return;
   }
-  cv.rect(x0 + 2, y - 4, 4, 3, P.redDk);
-  cv.rect(x0 - 2, y - 1, HEAD_W + 4, 5, P.white);
-  cv.rect(x0 - 2, y + 3, HEAD_W + 4, 1, P.whiteDk);
-  const px = x0 + HEAD_W - 2 + sway, py = y - 14;
-  cv.rect(px, py, 6, 6, P.white); cv.rect(px + 1, py + 5, 4, 1, P.whiteDk);
+  if (hat === 'beanie') {
+    for (let r = 0; r < 9; r++) {
+      const inset = Math.round((r * r) / 7);
+      cv.rect(x0 - 1 + inset, y - 1 - r, HEAD_W + 2 - inset * 2, 1, r % 3 === 1 ? P.white : P.blueTop);
+    }
+    cv.rect(x0 - 2, y - 1, HEAD_W + 4, 5, P.blueTopDk);
+    for (let i = 0; i < HEAD_W + 4; i += 3) cv.rect(x0 - 2 + i, y, 1, 3, P.blueTop);
+    const px = CX + dx - 3 + Math.round(sway / 2);
+    cv.rect(px, y - 15, 7, 6, P.white); cv.rect(px + 1, y - 10, 5, 1, P.whiteDk);
+    return;
+  }
+  // reindeer antlers on a headband
+  cv.rect(x0 - 1, y + 1, HEAD_W + 2, 3, P.antlerDk);
+  const antler = (ax: number, dir: number) => {
+    for (let k = 0; k < 12; k++) cv.rect(ax + Math.round(dir * k * 0.5), y - k, 3, 1, P.antler);
+    cv.rect(ax + dir * 2, y - 6, dir * 6, 2, P.antler); cv.rect(ax + dir * 6, y - 9, 2, 4, P.antler);
+    cv.rect(ax + dir * 3, y - 12, dir * 4, 2, P.antler);
+  };
+  antler(x0 + 4, -1); antler(x0 + HEAD_W - 7, 1);
+  cv.rect(x0 + 2, y - 2, 4, 3, P.antlerDk); cv.rect(x0 + HEAD_W - 6, y - 2, 4, 3, P.antlerDk);
 }
 
 /** Pastes the head; returns how far down the top of the hair starts, so the hat sits on it. */
@@ -326,16 +401,16 @@ function frame(activity: Activity, f: number): { pose: Pose; sway: number; props
 }
 
 /** Builds all frames for an activity. Returns the still (frame 0, PNG) and the looping GIF. */
-export async function buildPixelCharacter(face: Buffer, activity: Activity): Promise<{ png: Buffer; gif: Buffer }> {
+export async function buildPixelCharacter(face: Buffer, activity: Activity, outfit: Outfit = DEFAULT_OUTFIT): Promise<{ png: Buffer; gif: Buffer }> {
   const enc = GIFEncoder();
   let png: Buffer | null = null;
   for (let f = 0; f < FRAMES; f++) {
     const { pose, sway, props, before } = frame(activity, f);
     const cv = new Canvas();
     before?.(cv);
-    drawBody(cv, pose);
+    drawBody(cv, pose, outfit);
     const hairTop = await pasteFace(cv, face, pose.bob, pose.dx);
-    drawHat(cv, pose.bob, pose.dx, sway, Math.max(0, hairTop - 1));
+    drawHat(cv, pose.bob, pose.dx, sway, Math.max(0, hairTop - 1), outfit.hat);
     props(cv);
     cv.outline();
     if (f === 0) png = await sharp(cv.px, { raw: { width: SPRITE, height: SPRITE, channels: 4 } }).png({ compressionLevel: 9 }).toBuffer();

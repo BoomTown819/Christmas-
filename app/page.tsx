@@ -59,7 +59,7 @@ export default async function Home() {
       <Village
         eyebrow="Our Christmas 🎄"
         title={`Welcome back, ${profile?.display_name ?? 'friend'}! 🎅`}
-        greeter={<span className="walk-in"><CharacterSprite character={character} name={profile?.display_name} size={128} activityOverride={character ? undefined : 'waving'} /></span>}
+        greeter={character ? <span className="walk-in"><CharacterSprite character={character} name={profile?.display_name} size={128} /></span> : undefined}
         sub="Everyone’s wishlists in one place. Claim gifts in secret, and stay out of your own surprises."
         actions={<><Link href="/my-list" className="btn btn-gold btn-lg">Open my wishlist</Link>{!character && <Link href="/character" className="btn btn-8bit">Generate my Christmas character 🎅</Link>}</>}
       />

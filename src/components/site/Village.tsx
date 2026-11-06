@@ -14,7 +14,7 @@ export function Village({ eyebrow, title, sub, actions, greeter }: { eyebrow: Re
       <div className="village-inner">
         <div className="village-copy">
           <p className="village-eyebrow">{eyebrow}</p>
-          {greeter ? <div className="welcome-row">{greeter}<h1 className="village-title" data-testid="welcome">{title}</h1></div> : <h1 className="village-title">{title}</h1>}
+          {greeter ? <div className="welcome-row">{greeter}<h1 className="village-title" data-testid="welcome">{title}</h1></div> : <h1 className="village-title" data-testid="welcome">{title}</h1>}
           <p className="village-sub">{sub}</p>
           {actions && <div className="village-actions">{actions}</div>}
         </div>

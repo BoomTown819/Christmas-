@@ -8,6 +8,7 @@ import { CharacterSprite } from '@/components/character/CharacterSprite';
 import { ConfirmDialog } from '@/components/ConfirmDialog';
 import { PageHead } from '@/components/site/Village';
 import { ACTIVITIES, type Activity, type CharacterCard } from '@/lib/activities';
+import { OUTFIT_OPTIONS, OUTFIT_PARTS, PART_LABELS, randomOutfit, type Outfit, type OutfitPart } from '@/lib/outfit';
 import { supabaseBrowser } from '@/lib/supabase/client';
 
 interface Props {
@@ -19,6 +20,7 @@ interface Props {
   hasPhoto: boolean;
   isNew: boolean;
   aiEnabled: boolean;
+  outfit: Outfit;
 }
 
 type Busy = null | 'drawing' | 'animating';
@@ -39,7 +41,7 @@ async function shrinkPhoto(file: File): Promise<{ mime: string; data: string; pr
   }
 }
 
-export function CreatorApp({ userId, name: initialName, initial, animNote, showPublicly: initialShow, hasPhoto: initialHasPhoto, isNew, aiEnabled }: Props) {
+export function CreatorApp({ userId, name: initialName, initial, animNote, showPublicly: initialShow, hasPhoto: initialHasPhoto, isNew, aiEnabled, outfit: initialOutfit }: Props) {
   const db = supabaseBrowser();
   const router = useRouter();
   const fileRef = useRef<HTMLInputElement>(null);
@@ -57,6 +59,8 @@ export function CreatorApp({ userId, name: initialName, initial, animNote, showP
   const [toast, setToast] = useState<string | null>(null);
   const [cameraOpen, setCameraOpen] = useState(false);
   const [cropSrc, setCropSrc] = useState<string | null>(null);
+  const [outfit, setOutfit] = useState<Outfit>(initialOutfit);
+  const outfitTimer = useRef<ReturnType<typeof setTimeout>>();
 
   const flash = (t: string) => { setToast(t); setTimeout(() => setToast(null), 3000); };
 
@@ -74,9 +78,9 @@ export function CreatorApp({ userId, name: initialName, initial, animNote, showP
     try { setCropSrc((await shrinkPhoto(f)).preview); } catch { setError('That photo couldn’t be opened. Try a different one.'); }
   };
 
-  const animate = async (act: Activity) => {
+  const animate = async (act: Activity, withOutfit: Outfit = outfit) => {
     setBusy('animating'); setError(null);
-    const res = await fetch('/api/character/animate', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ activity: act }) });
+    const res = await fetch('/api/character/animate', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ activity: act, outfit: withOutfit }) });
     const body = await res.json().catch(() => ({}));
     setBusy(null);
     if (body.character) setCharacter(body.character);
@@ -94,12 +98,21 @@ export function CreatorApp({ userId, name: initialName, initial, animNote, showP
     setBusy('drawing');
     const res = await fetch('/api/character/generate', {
       method: 'POST', headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ activity, photo: photo ? { mime: photo.mime, data: photo.data } : undefined }),
+      body: JSON.stringify({ activity, outfit, photo: photo ? { mime: photo.mime, data: photo.data } : undefined }),
     });
     const body = await res.json().catch(() => ({}));
     if (!res.ok) { setBusy(null); return setError(body.error ?? 'Your character couldn’t be drawn. Try again.'); }
     setCharacter(body.character); setHasPhoto(true); setPhoto(null);
+    if (body.mode === 'free') { setBusy(null); setNote(''); router.refresh(); return; }
     await animate(activity);
+  };
+
+  /** Changing clothes re-dresses an existing free character right away (no photo needed). */
+  const changeOutfit = (next: Outfit) => {
+    setOutfit(next);
+    if (!character || aiEnabled) return;
+    clearTimeout(outfitTimer.current);
+    outfitTimer.current = setTimeout(() => animate(character.activity, next), 250);
   };
 
   const removePhoto = async () => {
@@ -110,7 +123,7 @@ export function CreatorApp({ userId, name: initialName, initial, animNote, showP
   const deleteCharacter = async () => {
     setConfirm(null);
     await db.from('characters').delete().eq('user_id', userId);
-    setCharacter(null); setNote(''); flash('Character deleted'); router.refresh();
+    setCharacter(null); setNote(''); flash('Character deleted. Make a new one any time.'); router.refresh();
   };
   const toggleShow = async (v: boolean) => {
     setShowPublicly(v);
@@ -177,6 +190,28 @@ export function CreatorApp({ userId, name: initialName, initial, animNote, showP
               </div>
             </div>
 
+            <div className="field">
+              <div className="label-row">
+                <span className="label">What you’re wearing</span>
+                <button type="button" className="btn btn-ghost btn-sm" onClick={() => changeOutfit(randomOutfit())}>🎲 Shuffle outfit</button>
+              </div>
+              <div className="outfit-grid">
+                {OUTFIT_PARTS.map((part: OutfitPart) => (
+                  <div key={part} className="outfit-row" role="radiogroup" aria-label={PART_LABELS[part]}>
+                    <span className="outfit-part">{PART_LABELS[part]}</span>
+                    <div className="outfit-chips">
+                      {Object.entries(OUTFIT_OPTIONS[part]).map(([value, label]) => (
+                        <button key={value} type="button" role="radio" aria-checked={outfit[part] === value}
+                          className={`fchip${outfit[part] === value ? ' is-on' : ''}`}
+                          onClick={() => changeOutfit({ ...outfit, [part]: value } as Outfit)}>{label}</button>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+              {aiEnabled && character && <p className="field-note">Outfit changes apply the next time you regenerate your character.</p>}
+            </div>
+
             {error && <p className="field-error" role="alert">{error}</p>}
             {note && !error && character && !character.anim && (
               <p className="field-note">The AI animation didn’t work ({note.replace(/\.$/, '')}), so your character is animated in your browser instead.</p>
@@ -207,11 +242,21 @@ export function CreatorApp({ userId, name: initialName, initial, animNote, showP
               </label>
             )}
 
-            <div className="creator-actions">
-              {hasPhoto && <button type="button" className="btn btn-ghost btn-sm btn-quiet-danger" onClick={() => setConfirm('photo')}>Delete my photo</button>}
-              {character && <button type="button" className="btn btn-ghost btn-sm btn-quiet-danger" onClick={() => setConfirm('character')}>Delete my character</button>}
-              {isNew && !character && <Link className="btn btn-ghost btn-sm" href="/my-list">Skip for now</Link>}
-            </div>
+            {character && (
+              <div className="danger-zone">
+                <div><strong>Don’t want a character?</strong><p className="muted">Delete it and it disappears everywhere: the dashboard, your list and your gift claims. You can always make a new one.</p></div>
+                <div className="creator-actions">
+                  <button type="button" className="btn btn-sm btn-danger" onClick={() => setConfirm('character')}>Delete my character</button>
+                  {hasPhoto && <button type="button" className="btn btn-ghost btn-sm btn-quiet-danger" onClick={() => setConfirm('photo')}>Delete my photo</button>}
+                </div>
+              </div>
+            )}
+            {!character && (
+              <div className="creator-actions">
+                {hasPhoto && <button type="button" className="btn btn-ghost btn-sm btn-quiet-danger" onClick={() => setConfirm('photo')}>Delete my photo</button>}
+                <Link className="btn btn-ghost btn-sm" href="/my-list">{isNew ? 'Skip for now' : 'I don’t want a character'}</Link>
+              </div>
+            )}
           </section>
         </div>
         {toast && <div className="toasts" role="status"><div className="toast"><span>{toast}</span></div></div>}
@@ -223,7 +268,7 @@ export function CreatorApp({ userId, name: initialName, initial, animNote, showP
       <ConfirmDialog open={confirm === 'photo'} title="Delete your photo?" confirmLabel="Delete photo"
         message="Your character stays. You’ll need to upload a photo again to regenerate it." onCancel={() => setConfirm(null)} onConfirm={removePhoto} />
       <ConfirmDialog open={confirm === 'character'} title="Delete your character?" confirmLabel="Delete character"
-        message="It disappears from the dashboard, your list and your claims. Your photo stays unless you delete it too." onCancel={() => setConfirm(null)} onConfirm={deleteCharacter} />
+        message="You won’t have a character anywhere on the site. Your photo stays (so you can make a new one quickly) unless you delete it too." onCancel={() => setConfirm(null)} onConfirm={deleteCharacter} />
     </>
   );
 }
