@@ -1,0 +1,11 @@
+node_modules
+.next
+.env
+.env.local
+dev-stack/auth
+dev-stack/postgrest
+dev-stack/keys.json
+dev-stack/mail
+dev-stack/*.log
+dev-stack/pgrst.conf
+*.tsbuildinfo
