@@ -120,14 +120,18 @@ export function MyListApp({ profile, wishlist, initialItems, anonymous }: Props)
       </PageHead>
 
       <main className="main">
-        <p className="secret-note"><span aria-hidden="true">🤫</span> Gift claims on your own list are kept secret from you, so Christmas morning is still a surprise. <Link href={`/list/${slug}`}>See what family sees</Link></p>
-        {anonymous && <p className="secret-note" data-testid="device-note"><span aria-hidden="true">📱</span> Your list is saved on this device. <Link href="/profile">Add an email</Link> to open it on another phone or computer.</p>}
 
         {items.length === 0 ? (
-          <EmptyState onAdd={openAdd} />
+          <>
+            <EmptyState onAdd={openAdd} />
+            <p className="secret-note"><span aria-hidden="true">🤫</span> Gift claims on your own list are kept secret from you, so Christmas morning is still a surprise. <Link href={`/list/${slug}`}>See what family sees</Link></p>
+            {anonymous && <p className="secret-note" data-testid="device-note">Your list is saved on this device. <Link href="/profile">Add an email</Link> to open it on another phone or computer.</p>}
+          </>
         ) : (
           <>
             <Summary items={items} totalCents={list.totalCents} />
+            <p className="secret-note"><span aria-hidden="true">🤫</span> Gift claims on your own list are kept secret from you, so Christmas morning is still a surprise. <Link href={`/list/${slug}`}>See what family sees</Link></p>
+            {anonymous && <p className="secret-note" data-testid="device-note">Your list is saved on this device. <Link href="/profile">Add an email</Link> to open it on another phone or computer.</p>}
             <Toolbar
               sort={sort} filter={filter} onSort={setSort} onFilter={setFilter}
               onRandom={() => setRandomOpen(true)}

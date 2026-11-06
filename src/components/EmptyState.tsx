@@ -15,7 +15,7 @@ export function EmptyState({ onAdd }: { onAdd: () => void }) {
         <circle cx="86" cy="68" r="3.5" className="ea-bauble" /><circle cx="114" cy="92" r="3.5" className="ea-bauble" /><circle cx="94" cy="104" r="3" className="ea-bauble-g" />
       </svg>
       <h2>Nothing under the tree yet</h2>
-      <p>Paste a link from any store, give it a price, and rate how badly you want it. Your list saves to your account, so it’s there on every device.</p>
+      <p>Paste a link from any store, give it a price, and rate how badly you want it. Your list saves automatically as you go.</p>
       <div className="empty-actions">
         <button type="button" className="btn btn-primary btn-lg" onClick={onAdd}><PlusIcon size={20} /> Add your first item</button>
       </div>
