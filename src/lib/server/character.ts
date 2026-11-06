@@ -11,7 +11,11 @@ export const GRID = 64;
 const model = () => process.env.OPENAI_IMAGE_MODEL || 'gpt-image-2.6-sunburst';
 const base = () => (process.env.OPENAI_BASE_URL || 'https://api.openai.com').replace(/\/$/, '');
 
-export const openAIConfigured = () => Boolean(process.env.OPENAI_API_KEY);
+const realKey = () => {
+  const k = (process.env.OPENAI_API_KEY ?? '').trim();
+  return k && !/^PASTE/i.test(k) ? k : null; // ignore the placeholder until a real key is pasted in
+};
+export const openAIConfigured = () => Boolean(realKey());
 
 export class CharacterError extends Error {
   constructor(message: string, public status = 502) { super(message); }
@@ -33,7 +37,7 @@ const animPrompt = (a: Activity) =>
 
 /** Calls OpenAI's image edit endpoint with one input image. Returns the image bytes. */
 async function openAIEdit(image: Buffer, mime: string, prompt: string, extra: Record<string, string>): Promise<Buffer> {
-  const key = process.env.OPENAI_API_KEY;
+  const key = realKey();
   if (!key) throw new CharacterError('Character drawing isn’t set up yet: the site owner needs to add an OpenAI API key.', 503);
   const form = new FormData();
   form.append('model', model());

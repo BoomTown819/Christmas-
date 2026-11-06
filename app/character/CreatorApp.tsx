@@ -2,6 +2,7 @@
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useRef, useState } from 'react';
+import { CameraCapture } from '@/components/character/CameraCapture';
 import { CharacterSprite } from '@/components/character/CharacterSprite';
 import { ConfirmDialog } from '@/components/ConfirmDialog';
 import { PageHead } from '@/components/site/Village';
@@ -52,6 +53,7 @@ export function CreatorApp({ userId, name: initialName, initial, animNote, showP
   const [showPublicly, setShowPublicly] = useState(initialShow);
   const [confirm, setConfirm] = useState<null | 'photo' | 'character'>(null);
   const [toast, setToast] = useState<string | null>(null);
+  const [cameraOpen, setCameraOpen] = useState(false);
 
   const flash = (t: string) => { setToast(t); setTimeout(() => setToast(null), 3000); };
 
@@ -146,11 +148,15 @@ export function CreatorApp({ userId, name: initialName, initial, animNote, showP
 
             <div className="field">
               <span className="label">Your photo <span className="optional">only you can see it</span></span>
-              <label className="photo-drop">
-                <input ref={fileRef} id="ch-photo" type="file" accept="image/*" className="sr-only" onChange={(e) => pickPhoto(e.target.files?.[0])} />
+              <div className="photo-drop">
                 {photo ? <img src={photo.preview} alt="Selected photo" /> : <span aria-hidden="true" style={{ fontSize: 30 }}>📸</span>}
-                <span>{photo ? 'Tap to pick a different photo' : hasPhoto ? 'Photo saved. Tap to use a different one' : 'Tap to add a clear photo of yourself'}</span>
-              </label>
+                <span>{photo ? 'Looking good! Retake or pick another below' : hasPhoto ? 'Photo saved. Take or choose a new one to change it' : 'Add a clear photo of just yourself'}</span>
+                <div className="photo-buttons">
+                  <button type="button" className="btn btn-primary btn-sm" onClick={() => setCameraOpen(true)}>📷 Take a photo</button>
+                  <button type="button" className="btn btn-soft btn-sm" onClick={() => fileRef.current?.click()}>🖼️ Choose from files</button>
+                </div>
+                <input ref={fileRef} id="ch-photo" type="file" accept="image/*" className="sr-only" tabIndex={-1} aria-label="Choose a photo from files" onChange={(e) => pickPhoto(e.target.files?.[0])} />
+              </div>
               <p className="field-note">Your photo is sent to OpenAI only to draw your character, and stored privately so you can regenerate later. Delete it any time.</p>
             </div>
 
@@ -182,6 +188,7 @@ export function CreatorApp({ userId, name: initialName, initial, animNote, showP
                 <button type="button" className="btn btn-soft" disabled={Boolean(busy) || (!photo && !hasPhoto)} onClick={generate}>
                   {photo ? 'Use this photo' : 'Regenerate character'}
                 </button>
+                <button type="button" className="btn btn-soft" onClick={() => setCameraOpen(true)}>Take a new photo</button>
                 <button type="button" className="btn btn-soft" onClick={() => fileRef.current?.click()}>Upload a different photo</button>
                 <Link className="btn btn-gold" href="/">Save &amp; see it on the dashboard</Link>
               </div>
@@ -203,6 +210,8 @@ export function CreatorApp({ userId, name: initialName, initial, animNote, showP
         </div>
         {toast && <div className="toasts" role="status"><div className="toast"><span>{toast}</span></div></div>}
       </main>
+      <CameraCapture open={cameraOpen} onClose={() => setCameraOpen(false)}
+        onPhoto={(dataUrl) => { setError(null); setPhoto({ mime: 'image/jpeg', data: dataUrl.split(',')[1], preview: dataUrl }); }} />
       <ConfirmDialog open={confirm === 'photo'} title="Delete your photo?" confirmLabel="Delete photo"
         message="Your character stays. You’ll need to upload a photo again to regenerate it." onCancel={() => setConfirm(null)} onConfirm={removePhoto} />
       <ConfirmDialog open={confirm === 'character'} title="Delete your character?" confirmLabel="Delete character"
