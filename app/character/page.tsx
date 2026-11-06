@@ -13,12 +13,12 @@ export default async function CharacterPage({ searchParams }: { searchParams: { 
   if (!user) redirect('/login?next=/character');
   const [{ data: profile }, { data: ch }, { data: photo }] = await Promise.all([
     db.from('profiles').select('id, display_name').eq('id', user.id).single(),
-    db.from('characters').select('token, activity, anim_status, anim_note, show_publicly, sprite_png').eq('user_id', user.id).maybeSingle(),
+    db.from('characters').select('token, activity, anim_status, anim_note, show_publicly, sprite_png, face_png').eq('user_id', user.id).maybeSingle(),
     db.from('character_photos').select('user_id').eq('user_id', user.id).maybeSingle(),
   ]);
   if (!profile) redirect('/login');
   const character: CharacterCard | null = ch?.sprite_png
-    ? { token: ch.token, activity: isActivity(ch.activity) ? ch.activity : 'waving', anim: ch.anim_status === 'ai' }
+    ? { token: ch.token, activity: isActivity(ch.activity) ? ch.activity : 'waving', anim: ch.anim_status === 'ai' || ch.anim_status === 'pixel' }
     : null;
   return (
     <CreatorApp

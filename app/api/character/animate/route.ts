@@ -2,6 +2,7 @@ import { NextResponse, type NextRequest } from 'next/server';
 import { isActivity } from '@/lib/activities';
 import { CharacterError, drawAnimation, openAIConfigured } from '@/lib/server/character';
 import { fail, requireUser, useQuota } from '@/lib/server/characterRoute';
+import { buildPixelCharacter } from '@/lib/server/sprite';
 
 export const runtime = 'nodejs';
 export const maxDuration = 300;
@@ -17,9 +18,17 @@ export async function POST(req: NextRequest) {
   const body = await req.json().catch(() => ({}));
   if (!isActivity(body.activity)) return NextResponse.json({ error: 'Pick an activity.' }, { status: 400 });
   const activity = body.activity;
-  const { data: ch } = await db.from('characters').select('sprite_png').eq('user_id', user.id).maybeSingle();
+  const { data: ch } = await db.from('characters').select('sprite_png, face_png').eq('user_id', user.id).maybeSingle();
   if (!ch?.sprite_png) return NextResponse.json({ error: 'Make your character first.' }, { status: 400 });
 
+  if (ch.face_png) {
+    // Free pixel character: redraw the frames for the new activity. Instant, no photo needed.
+    const { png, gif } = await buildPixelCharacter(Buffer.from(ch.face_png, 'base64'), activity);
+    const { data: saved } = await db.from('characters')
+      .update({ activity, sprite_png: png.toString('base64'), anim_gif: gif.toString('base64'), anim_status: 'pixel', anim_note: '' })
+      .eq('user_id', user.id).select('token, activity').single();
+    return NextResponse.json({ character: saved ? { token: saved.token, activity: saved.activity, anim: true } : null, mode: 'free' });
+  }
   if (!openAIConfigured()) {
     const { data: saved } = await db.from('characters')
       .update({ activity, anim_gif: null, anim_status: 'none', anim_note: '' })

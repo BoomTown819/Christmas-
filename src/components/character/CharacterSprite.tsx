@@ -38,7 +38,8 @@ export function CharacterSprite({ character, name, size = 64, decorative, compac
   if (character?.anim && !activityOverride) {
     return (
       <span {...common} data-anim="ai">
-        <img className="char-img" src={characterSrc(character, 'gif')} alt="" width={size} height={size} draggable={false} />
+        <img className="char-img" src={characterSrc(character, 'gif')} alt="" width={size} height={size} draggable={false}
+          style={{ imageRendering: size >= 96 ? 'pixelated' : 'auto' }} />
       </span>
     );
   }

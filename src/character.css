@@ -140,3 +140,10 @@
 .camera-box { display: grid; gap: 10px; }
 .camera-video { width: 100%; aspect-ratio: 4 / 3; max-width: 100%; object-fit: cover; border-radius: 12px; background: #0a1f14; transform: scaleX(-1); }
 .camera-wait { text-align: center; margin-top: -40px; }
+.cropper { display: grid; justify-items: center; gap: 12px; }
+.crop-view { position: relative; overflow: hidden; border-radius: 16px; background: #0a1f14; touch-action: none; cursor: grab; max-width: 100%; }
+.crop-view:active { cursor: grabbing; }
+.crop-view img { user-select: none; pointer-events: none; }
+.crop-mask { position: absolute; inset: 0; pointer-events: none; }
+.crop-zoom { display: flex; align-items: center; gap: 10px; font-weight: 600; font-size: 14px; width: 100%; }
+.crop-zoom input { flex: 1; accent-color: var(--green); }

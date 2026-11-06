@@ -5,5 +5,5 @@ import { isActivity, type CharacterCard } from './activities';
 export async function getMyCharacter(db: SupabaseClient, userId: string): Promise<CharacterCard | null> {
   const { data } = await db.from('characters').select('token, activity, anim_status, sprite_png').eq('user_id', userId).maybeSingle();
   if (!data?.sprite_png) return null;
-  return { token: data.token, activity: isActivity(data.activity) ? data.activity : 'waving', anim: data.anim_status === 'ai' };
+  return { token: data.token, activity: isActivity(data.activity) ? data.activity : 'waving', anim: data.anim_status === 'ai' || data.anim_status === 'pixel' };
 }

@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { isActivity } from '@/lib/activities';
-import { CharacterError, drawPixelPortrait, drawStill, openAIConfigured } from '@/lib/server/character';
+import { CharacterError, drawStill, openAIConfigured } from '@/lib/server/character';
+import { buildPixelCharacter, makeFace } from '@/lib/server/sprite';
 import { fail, requireUser, useQuota } from '@/lib/server/characterRoute';
 
 export const runtime = 'nodejs';
@@ -36,13 +37,22 @@ export async function POST(req: NextRequest) {
       photo = data;
     }
 
-    // With an OpenAI key the AI draws the character; without one the site makes a free pixel portrait itself.
-    const ai = openAIConfigured();
-    if (ai) await useQuota(db, user.id, 'still');
     const bytes = Buffer.from(photo.data, 'base64');
-    const sprite = ai ? await drawStill(bytes, photo.mime) : await drawPixelPortrait(bytes);
+    if (!openAIConfigured()) {
+      // Free mode: the site draws a Retro Bowl-style sprite from the face itself, already animated.
+      const face = await makeFace(bytes);
+      const { png, gif } = await buildPixelCharacter(face, activity);
+      const { data: saved, error } = await db.from('characters').upsert({
+        user_id: user.id, sprite_png: png.toString('base64'), anim_gif: gif.toString('base64'), anim_status: 'pixel',
+        anim_note: '', activity, face_png: face.toString('base64'),
+      }).select('token, activity').single();
+      if (error) throw new CharacterError('Your character was made but couldn’t be saved. Try again.', 500);
+      return NextResponse.json({ character: { token: saved.token, activity: saved.activity, anim: true }, mode: 'free' });
+    }
+    await useQuota(db, user.id, 'still');
+    const sprite = await drawStill(bytes, photo.mime);
     const { data: saved, error } = await db.from('characters').upsert({
-      user_id: user.id, sprite_png: sprite.toString('base64'), anim_gif: null, anim_status: 'none', anim_note: '', activity,
+      user_id: user.id, sprite_png: sprite.toString('base64'), anim_gif: null, anim_status: 'none', anim_note: '', activity, face_png: null,
     }).select('token, activity, anim_status').single();
     if (error) throw new CharacterError('Your character was drawn but couldn’t be saved. Try again.', 500);
     return NextResponse.json({ character: { token: saved.token, activity: saved.activity, anim: false } });

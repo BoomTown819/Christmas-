@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useRef, useState } from 'react';
 import { CameraCapture } from '@/components/character/CameraCapture';
+import { FaceCropper } from '@/components/character/FaceCropper';
 import { CharacterSprite } from '@/components/character/CharacterSprite';
 import { ConfirmDialog } from '@/components/ConfirmDialog';
 import { PageHead } from '@/components/site/Village';
@@ -55,6 +56,7 @@ export function CreatorApp({ userId, name: initialName, initial, animNote, showP
   const [confirm, setConfirm] = useState<null | 'photo' | 'character'>(null);
   const [toast, setToast] = useState<string | null>(null);
   const [cameraOpen, setCameraOpen] = useState(false);
+  const [cropSrc, setCropSrc] = useState<string | null>(null);
 
   const flash = (t: string) => { setToast(t); setTimeout(() => setToast(null), 3000); };
 
@@ -69,7 +71,7 @@ export function CreatorApp({ userId, name: initialName, initial, animNote, showP
     if (!f) return;
     setError(null);
     if (!f.type.startsWith('image/')) return setError('Pick a photo (JPG, PNG or HEIC from your camera roll).');
-    try { setPhoto(await shrinkPhoto(f)); } catch { setError('That photo couldn’t be opened. Try a different one.'); }
+    try { setCropSrc((await shrinkPhoto(f)).preview); } catch { setError('That photo couldn’t be opened. Try a different one.'); }
   };
 
   const animate = async (act: Activity) => {
@@ -138,7 +140,7 @@ export function CreatorApp({ userId, name: initialName, initial, animNote, showP
             {character && !busy && (
               <p className="stage-caption">
                 {previewActivity ? <span className="anim-label">Preview · tap “Animate” to make it</span>
-                  : character.anim ? <span className="anim-label is-ai">✨ AI animation</span>
+                  : character.anim ? <span className={`anim-label${aiEnabled ? ' is-ai' : ''}`}>{aiEnabled ? '✨ AI animation' : '🎮 8-bit animation'}</span>
                   : <span className="anim-label">{aiEnabled ? 'Animated in your browser' : '8-bit you · animated in your browser'}</span>}
               </p>
             )}
@@ -161,7 +163,7 @@ export function CreatorApp({ userId, name: initialName, initial, animNote, showP
               </div>
               <p className="field-note">{aiEnabled
                 ? 'Your photo is sent to OpenAI only to draw your character, and stored privately so you can regenerate later. Delete it any time.'
-                : 'This website turns your photo into pixel art itself: nothing is sent anywhere else. Your photo is stored privately so you can redo it later. Delete it any time.'}</p>
+                : 'This website turns your face into a little 8-bit player itself: nothing is sent anywhere else. Your photo is stored privately so you can redo it later. Delete it any time.'}</p>
             </div>
 
             <div className="field">
@@ -186,7 +188,7 @@ export function CreatorApp({ userId, name: initialName, initial, animNote, showP
               <div className="creator-actions">
                 {(previewActivity || (aiEnabled && !character.anim)) && (
                   <button type="button" className="btn btn-primary" disabled={Boolean(busy)} onClick={() => animate(activity)}>
-                    {previewActivity ? (aiEnabled ? `Animate: ${ACTIVITIES[activity].label}` : `Use: ${ACTIVITIES[activity].label}`) : 'Try the AI animation again'}
+                    {previewActivity ? `Animate: ${ACTIVITIES[activity].label}` : 'Try the AI animation again'}
                   </button>
                 )}
                 <button type="button" className="btn btn-soft" disabled={Boolean(busy) || (!photo && !hasPhoto)} onClick={generate}>
@@ -215,7 +217,9 @@ export function CreatorApp({ userId, name: initialName, initial, animNote, showP
         {toast && <div className="toasts" role="status"><div className="toast"><span>{toast}</span></div></div>}
       </main>
       <CameraCapture open={cameraOpen} onClose={() => setCameraOpen(false)}
-        onPhoto={(dataUrl) => { setError(null); setPhoto({ mime: 'image/jpeg', data: dataUrl.split(',')[1], preview: dataUrl }); }} />
+        onPhoto={(dataUrl) => { setError(null); setCropSrc(dataUrl); }} />
+      <FaceCropper src={cropSrc} onCancel={() => setCropSrc(null)}
+        onDone={(dataUrl) => { setCropSrc(null); if (fileRef.current) fileRef.current.value = ''; setPhoto({ mime: 'image/jpeg', data: dataUrl.split(',')[1], preview: dataUrl }); }} />
       <ConfirmDialog open={confirm === 'photo'} title="Delete your photo?" confirmLabel="Delete photo"
         message="Your character stays. You’ll need to upload a photo again to regenerate it." onCancel={() => setConfirm(null)} onConfirm={removePhoto} />
       <ConfirmDialog open={confirm === 'character'} title="Delete your character?" confirmLabel="Delete character"
