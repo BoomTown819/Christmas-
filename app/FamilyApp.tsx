@@ -61,7 +61,7 @@ export function FamilyApp({ families }: { families: { id: string; name: string }
         <section className="family-start">
           <div className="family-start-art" aria-hidden="true"><Tree size={90} /><Present color="red" size={44} /><Present color="gold" size={36} /></div>
           <h2>Bring the family together</h2>
-          <p>Create a family group and invite everyone, or join one with the code someone sent you. Your wishlist stays your own either way.</p>
+          <p>One person creates the family and gets a family code to share. Everyone else enters that same code to join. Your wishlist stays your own either way.</p>
           <div className="family-start-actions">
             <button type="button" className="btn btn-festive btn-lg" onClick={() => setCreateOpen(true)}>Create a family</button>
             <JoinByCode compact />
@@ -170,7 +170,7 @@ function InviteDialog({ open, onClose, dash, onNewCode }: { open: boolean; onClo
   return (
     <Modal open={open} onClose={onClose} title={`Invite to ${dash.family.name}`} size="sm">
       <div className="form">
-        <p className="confirm-msg">Anyone with this invitation can join {dash.family.name}. They’ll make their own account and their own wishlist.</p>
+        <p className="confirm-msg">This is {dash.family.name}’s family code. Send the same code or link to everyone; they’ll join with just their name and get their own wishlist.</p>
         {code ? (
           <>
             <div className="invite-code" data-testid="invite-code">{fmtInviteCode(code)}</div>

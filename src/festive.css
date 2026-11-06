@@ -15,7 +15,7 @@
 
 /* ---------- top bar ---------- */
 .sitebar {
-  position: sticky; top: env(safe-area-inset-top, 0px); z-index: 30;
+  position: relative; z-index: 30; /* scrolls away with the page, lights and all */
   background: linear-gradient(180deg, #06190f, var(--hero-bg));
   color: var(--hero-ink);
 }

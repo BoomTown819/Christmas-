@@ -44,7 +44,7 @@ export function SignupForm({ next }: { next?: string }) {
       {error && <p className="field-error" role="alert">{error}</p>}
       <button type="submit" className="btn btn-primary btn-lg" disabled={busy}>{busy ? 'Making your list…' : 'Start my wishlist'}</button>
       <p className="field-note">No email or password needed. Your list is saved to this device. Want it on another phone or computer too? Add an email later on your profile.</p>
-      <p className="authcard-alt">Already saved your account with an email? <Link href={`/login${next ? `?next=${encodeURIComponent(next)}` : ''}`}>Log in</Link></p>
+      <p className="authcard-alt">Saved your account with an email before? <Link href={`/login${next ? `?next=${encodeURIComponent(next)}` : ''}`}>Log in</Link></p>
     </form>
   );
 }
