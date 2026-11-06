@@ -40,12 +40,16 @@ export interface MyWishlist {
 }
 
 /** What gift buyers learn about a claim. Never fetched for your own list. */
+import type { CharacterCard } from './lib/activities';
+
 export interface Claim {
   item_id: string;
   status: 'claimed' | 'purchased';
   claimer_name: string;
   is_mine: boolean;
   claimed_at: string;
+  /** The claimer's character, shown to other gift buyers only. */
+  claimer_character: CharacterCard | null;
 }
 
 export interface PublicWishlist {
@@ -53,7 +57,7 @@ export interface PublicWishlist {
   title: string;
   slug: string;
   viewer_is_owner: boolean;
-  owner: { display_name: string; avatar: string; avatar_color: string };
+  owner: { display_name: string; avatar: string; avatar_color: string; character?: CharacterCard | null };
   items: {
     id: string; name: string; url: string; price_cents: number; rating: number; description: string;
     description_source: DescriptionSource; reason: string; image_url: string; position: number; created_at: string;
@@ -65,6 +69,7 @@ export interface FamilyMemberCard {
   display_name: string;
   avatar: string;
   avatar_color: string;
+  character?: CharacterCard;
   role: 'organizer' | 'member';
   is_me: boolean;
   shared: boolean;

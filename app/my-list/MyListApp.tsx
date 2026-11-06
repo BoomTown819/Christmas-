@@ -1,7 +1,9 @@
 'use client';
 import Link from 'next/link';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { CharacterSprite } from '@/components/character/CharacterSprite';
 import { ConfirmDialog } from '@/components/ConfirmDialog';
+import type { CharacterCard } from '@/lib/activities';
 import { EmptyState } from '@/components/EmptyState';
 import { Avatar } from '@/components/festive/Decorations';
 import { PlusIcon } from '@/components/Icons';
@@ -22,9 +24,9 @@ import { filterByRating, FILTER_LABELS, sortItems } from '@/lib/organize';
 import { rememberOwnedList } from '@/lib/ownedLists';
 import type { ItemDraft, MyWishlist, Profile, RatingFilter, SortKey, WishlistItem } from '@/types';
 
-interface Props { profile: Profile; wishlist: MyWishlist; initialItems: WishlistItem[]; anonymous?: boolean }
+interface Props { profile: Profile; wishlist: MyWishlist; initialItems: WishlistItem[]; anonymous?: boolean; character?: CharacterCard | null }
 
-export function MyListApp({ profile, wishlist, initialItems, anonymous }: Props) {
+export function MyListApp({ profile, wishlist, initialItems, anonymous, character }: Props) {
   const list = useMyWishlist(wishlist.id, profile.id, initialItems);
   const { items } = list;
   const [sort, setSort] = useState<SortKey>('custom');
@@ -112,7 +114,9 @@ export function MyListApp({ profile, wishlist, initialItems, anonymous }: Props)
         <button type="button" className="btn btn-gold btn-lg" onClick={openAdd}><PlusIcon size={20} /> Add item</button>
       </>}>
         <div className="pagehead-who">
-          <Avatar emoji={AVATARS[profile.avatar] ?? '🎅'} color={profile.avatar_color} size={46} />
+          {character
+            ? <Link href="/character" aria-label="Edit my Christmas character"><CharacterSprite character={character} name={profile.display_name} size={64} /></Link>
+            : <Avatar emoji={AVATARS[profile.avatar] ?? '🎅'} color={profile.avatar_color} size={46} />}
           <span className="hero-pill"><span className="hero-pill-num">{items.length}</span> {items.length === 1 ? 'item' : 'items'} on the list</span>
         </div>
         <h1 className="pagehead-title">{title}</h1>
@@ -125,12 +129,24 @@ export function MyListApp({ profile, wishlist, initialItems, anonymous }: Props)
           <>
             <EmptyState onAdd={openAdd} />
             <p className="secret-note"><span aria-hidden="true">🤫</span> Gift claims on your own list are kept secret from you, so Christmas morning is still a surprise. <Link href={`/list/${slug}`}>See what family sees</Link></p>
+            {!character && (
+              <div className="char-cta" data-testid="character-cta">
+                <div><strong>Make your 8-bit Christmas character</strong><p>Upload a photo and it turns into a little pixel you that shows up on the dashboard and next to the gifts you claim.</p></div>
+                <Link className="btn btn-8bit" href="/character">Generate my Christmas character 🎅</Link>
+              </div>
+            )}
             {anonymous && <p className="secret-note" data-testid="device-note">Your list is saved on this device. <Link href="/profile">Add an email</Link> to open it on another phone or computer.</p>}
           </>
         ) : (
           <>
             <Summary items={items} totalCents={list.totalCents} />
             <p className="secret-note"><span aria-hidden="true">🤫</span> Gift claims on your own list are kept secret from you, so Christmas morning is still a surprise. <Link href={`/list/${slug}`}>See what family sees</Link></p>
+            {!character && (
+              <div className="char-cta" data-testid="character-cta">
+                <div><strong>Make your 8-bit Christmas character</strong><p>Upload a photo and it turns into a little pixel you that shows up on the dashboard and next to the gifts you claim.</p></div>
+                <Link className="btn btn-8bit" href="/character">Generate my Christmas character 🎅</Link>
+              </div>
+            )}
             {anonymous && <p className="secret-note" data-testid="device-note">Your list is saved on this device. <Link href="/profile">Add an email</Link> to open it on another phone or computer.</p>}
             <Toolbar
               sort={sort} filter={filter} onSort={setSort} onFilter={setFilter}

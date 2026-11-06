@@ -1,5 +1,7 @@
 import Link from 'next/link';
+import { CharacterSprite } from '@/components/character/CharacterSprite';
 import { Village } from '@/components/site/Village';
+import { getMyCharacter } from '@/lib/myCharacter';
 import { getSessionUser } from '@/lib/supabase/server';
 import { FamilyApp } from './FamilyApp';
 import { JoinByCode } from './JoinByCode';
@@ -41,7 +43,8 @@ export default async function Home() {
     );
   }
 
-  const [{ data: profile }, { data: memberships }] = await Promise.all([
+  const [character, { data: profile }, { data: memberships }] = await Promise.all([
+    getMyCharacter(db, user.id),
     db.from('profiles').select('display_name').eq('id', user.id).single(),
     db.from('family_members').select('family_id, joined_at, families(name)').eq('user_id', user.id).order('joined_at'),
   ]);
@@ -55,9 +58,10 @@ export default async function Home() {
     <>
       <Village
         eyebrow="Our Christmas 🎄"
-        title={`Merry Christmas, ${profile?.display_name ?? 'friend'}!`}
+        title={`Welcome back, ${profile?.display_name ?? 'friend'}! 🎅`}
+        greeter={<span className="walk-in"><CharacterSprite character={character} name={profile?.display_name} size={128} activityOverride={character ? undefined : 'waving'} /></span>}
         sub="Everyone’s wishlists in one place. Claim gifts in secret, and stay out of your own surprises."
-        actions={<Link href="/my-list" className="btn btn-gold btn-lg">Open my wishlist</Link>}
+        actions={<><Link href="/my-list" className="btn btn-gold btn-lg">Open my wishlist</Link>{!character && <Link href="/character" className="btn btn-8bit">Generate my Christmas character 🎅</Link>}</>}
       />
       <FamilyApp families={families} />
     </>

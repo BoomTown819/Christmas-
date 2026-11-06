@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useState, type FormEvent } from 'react';
 import { ConfirmDialog } from '@/components/ConfirmDialog';
+import { CharacterSprite } from '@/components/character/CharacterSprite';
 import { Avatar, Ornament, Present, Tree } from '@/components/festive/Decorations';
 import { GiftPlaceholder } from '@/components/Icons';
 import { Modal } from '@/components/Modal';
@@ -125,10 +126,15 @@ export function FamilyApp({ families }: { families: { id: string; name: string }
 
 function MemberCard({ m }: { m: FamilyMemberCard }) {
   const shared = m.is_me || m.shared;
+  // Clicking anywhere on the card (or the character) opens their list.
+  const href = m.is_me ? '/my-list' : shared && m.share_slug ? `/list/${m.share_slug}` : null;
   return (
     <article className={`member${m.is_me ? ' is-me' : ''}`} data-testid="member-card">
+      {href && <Link className="member-link" href={href} aria-label={m.is_me ? 'Edit my list' : `Open ${m.display_name}’s wishlist`} />}
       <header className="member-head">
-        <Avatar emoji={AVATARS[m.avatar] ?? '🎅'} color={m.avatar_color} size={58} />
+        {m.character
+          ? <CharacterSprite character={m.character} name={m.display_name} size={64} />
+          : <Avatar emoji={AVATARS[m.avatar] ?? '🎅'} color={m.avatar_color} size={58} />}
         <div className="member-id">
           <h3>{m.is_me ? `${m.display_name} (you)` : m.display_name}</h3>
           <p className="muted">{shared ? `${m.item_count ?? 0} ${m.item_count === 1 ? 'item' : 'items'}` : 'List not shared with the family'}{m.role === 'organizer' ? ' · organizer' : ''}</p>
@@ -151,7 +157,7 @@ function MemberCard({ m }: { m: FamilyMemberCard }) {
       )}
       <footer className="member-foot">
         {m.is_me
-          ? <Link className="btn btn-soft btn-sm" href="/my-list">Edit my list</Link>
+          ? <span className="member-me-actions"><Link className="btn btn-soft btn-sm" href="/my-list">Edit my list</Link>{!m.character && <Link className="btn btn-8bit btn-sm" href="/character">Make my character 🎅</Link>}</span>
           : shared && m.share_slug
             ? <Link className="btn btn-primary btn-sm" href={`/list/${m.share_slug}`}>View wishlist</Link>
             : <span className="muted small">Ask them for their link</span>}

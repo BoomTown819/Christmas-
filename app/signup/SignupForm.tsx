@@ -15,7 +15,7 @@ export function SignupForm({ next }: { next?: string }) {
   const [color, setColor] = useState('red');
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  const dest = safeNext(next, '/my-list');
+  const dest = safeNext(next, '/character?new=1');
 
   const submit = async (e: FormEvent) => {
     e.preventDefault();

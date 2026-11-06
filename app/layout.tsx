@@ -1,9 +1,12 @@
 import type { Metadata, Viewport } from 'next';
 import type { ReactNode } from 'react';
+import { DecorProvider, FooterParade, type DecorCharacter } from '@/components/character/Decor';
 import { SiteHeader } from '@/components/site/SiteHeader';
+import { getSessionUser } from '@/lib/supabase/server';
 import '@/styles.css';
 import '@/festive.css';
 import '@/app.css';
+import '@/character.css';
 
 // Public address for link previews. On Vercel this is filled in automatically.
 const site =
@@ -20,7 +23,9 @@ export const metadata: Metadata = {
 
 export const viewport: Viewport = { width: 'device-width', initialScale: 1, viewportFit: 'cover', themeColor: '#0d3b27' };
 
-export default function RootLayout({ children }: { children: ReactNode }) {
+export default async function RootLayout({ children }: { children: ReactNode }) {
+  const { db, user } = await getSessionUser();
+  const decor: DecorCharacter[] = user ? (((await db.rpc('get_decor_characters')).data as DecorCharacter[] | null) ?? []) : [];
   return (
     <html lang="en">
       <head>
@@ -30,9 +35,12 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Gloock&family=Figtree:wght@400;500;600;700&display=swap" />
       </head>
       <body>
-        <SiteHeader />
-        {children}
-        <footer className="site-foot">Our Christmas · made for families who’d rather be surprised</footer>
+        <DecorProvider characters={decor}>
+          <SiteHeader />
+          {children}
+          <FooterParade />
+          <footer className="site-foot">Our Christmas · made for families who’d rather be surprised</footer>
+        </DecorProvider>
       </body>
     </html>
   );

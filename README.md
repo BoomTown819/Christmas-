@@ -61,6 +61,19 @@ Private notes live in their own owner-only table, so gift buyers never receive t
 - **Claimed** and **Bought** are separate states, and the claimer marks an item bought when they've actually bought it.
 - Open lists refresh claims every 5 seconds, so everyone stays in sync.
 
+## 8-bit Christmas characters
+
+Each person uploads their own photo on **My Christmas character** (`/character`) and taps **GENERATE MY CHRISTMAS CHARACTER 🎅**.
+
+1. The server sends the photo to OpenAI's image model (`OPENAI_IMAGE_MODEL`, default `gpt-image-2.6-sunburst`) and asks for a pixel-art Christmas version of the person.
+2. The result is shrunk onto the same 64×64 pixel grid with a small palette and a transparent background, so every character matches.
+3. A second request asks OpenAI for an animated GIF of that same character doing their chosen activity (8 frames, looping). Changing the activity only redoes this step; no new photo is needed.
+4. If the GIF step fails, the character is animated in the browser with 8-bit props instead, and the page says so ("Animated in your browser").
+
+Setup: add `OPENAI_API_KEY` in Vercel → Settings → Environment Variables (mark it **Sensitive**), then redeploy. Each person can make 5 characters and 10 animations per day, to protect the bill.
+
+Privacy: photos live in `character_photos`, readable only by their owner. Characters are visible to family. Anyone else sees one only on that person's shared list, or next to gifts they claim, if "Show my character outside my family" is on. Claimer characters come through `get_claims`, which returns nothing to the list's owner, so the secret-gift rule still holds. Decorative characters sit in hero, header and footer areas, and can't be clicked or tapped.
+
 ## Families
 - Create a family, then **Invite family** to get a link and a code like `K7QM-3XPA` that you can send by Messages, Email or WhatsApp.
 - Someone opening the invitation can sign up right there and joins automatically afterwards.

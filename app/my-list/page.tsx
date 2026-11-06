@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { redirect } from 'next/navigation';
 import { fromRow, type ItemRow } from '@/lib/items';
+import { getMyCharacter } from '@/lib/myCharacter';
 import { getSessionUser } from '@/lib/supabase/server';
 import { MyListApp } from './MyListApp';
 
@@ -15,6 +16,7 @@ export default async function MyListPage() {
     db.from('wishlists').select('id, title, share_slug, share_with_family').eq('owner_id', user.id).single(),
   ]);
   if (!profile || !wishlist) redirect('/login');
+  const character = await getMyCharacter(db, user.id);
   const { data: rows } = await db.from('wishlist_items').select('*, item_private_notes(note)').eq('wishlist_id', wishlist.id).order('position');
-  return <MyListApp profile={profile} wishlist={wishlist} anonymous={Boolean(user.is_anonymous) && !user.email} initialItems={(rows as ItemRow[] | null ?? []).map(fromRow)} />;
+  return <MyListApp profile={profile} wishlist={wishlist} anonymous={Boolean(user.is_anonymous) && !user.email} character={character} initialItems={(rows as ItemRow[] | null ?? []).map(fromRow)} />;
 }

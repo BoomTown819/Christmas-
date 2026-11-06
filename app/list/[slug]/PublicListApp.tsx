@@ -1,6 +1,7 @@
 'use client';
 import Link from 'next/link';
 import { useCallback, useEffect, useMemo, useState, type FormEvent } from 'react';
+import { CharacterSprite } from '@/components/character/CharacterSprite';
 import { Avatar } from '@/components/festive/Decorations';
 import { ExternalIcon } from '@/components/Icons';
 import { ItemCard } from '@/components/ItemCard';
@@ -39,7 +40,9 @@ export function PublicListApp({ list, viewerName, signedIn }: Props) {
     <>
       <PageHead>
         <div className="pagehead-who">
-          <Avatar emoji={AVATARS[list.owner.avatar] ?? '🎅'} color={list.owner.avatar_color} size={46} />
+          {list.owner.character
+            ? <CharacterSprite character={list.owner.character} name={owner} size={64} />
+            : <Avatar emoji={AVATARS[list.owner.avatar] ?? '🎅'} color={list.owner.avatar_color} size={46} />}
           <span className="hero-pill"><span className="hero-pill-num">{items.length}</span> {items.length === 1 ? 'gift' : 'gifts'} on the list</span>
         </div>
         <h1 className="pagehead-title">{title}</h1>
@@ -155,7 +158,9 @@ function BuyerView({ list, items, viewerName, signedIn }: { list: PublicWishlist
         <div className="grid">
           {visible.map((item, i) => {
             const c = claims.get(item.id);
-            const status = c ? (c.is_mine ? (c.status === 'purchased' ? 'You bought this ✓' : 'You’re getting this') : `${c.status === 'purchased' ? 'Bought' : 'Claimed'} by ${c.claimer_name}`) : undefined;
+            const text = c ? (c.is_mine ? (c.status === 'purchased' ? 'You bought this ✓' : 'You’re getting this') : `${c.status === 'purchased' ? 'Bought' : 'Claimed'} by ${c.claimer_name}`) : undefined;
+            // The claimer's 8-bit character. Only gift buyers ever receive claim data, so the list's owner never sees this.
+            const status = c ? <>{<CharacterSprite character={c.claimer_character} name={c.claimer_name} size={32} compact />}<span>{text}</span></> : undefined;
             return (
               <ItemCard key={item.id} item={item} index={i} readOnly status={status}
                 statusTone={c ? (c.is_mine ? 'mine' : c.status) : undefined}

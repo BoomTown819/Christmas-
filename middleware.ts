@@ -1,7 +1,7 @@
 import { createServerClient } from '@supabase/ssr';
 import { NextResponse, type NextRequest } from 'next/server';
 
-const PROTECTED = ['/my-list', '/profile'];
+const PROTECTED = ['/my-list', '/profile', '/character'];
 
 // Keeps the Supabase session cookie fresh and sends signed-out visitors to log in.
 export async function middleware(req: NextRequest) {
