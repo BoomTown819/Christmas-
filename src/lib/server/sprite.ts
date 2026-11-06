@@ -119,7 +119,7 @@ function backgroundMask(raw: Buffer): Uint8Array {
 /** Turns the person's cropped face photo into the sprite's head: real detail, a little grain. */
 export async function makeFace(facePhoto: Buffer): Promise<Buffer> {
   const raw = await sharp(facePhoto).rotate()
-    .resize(HEAD_W, HEAD_H, { fit: 'cover', position: 'attention', kernel: 'lanczos3' })
+    .resize(HEAD_W, HEAD_H, { fit: 'cover', position: 'centre', kernel: 'lanczos3' })
     .modulate({ saturation: 1.18 }).linear(1.06, -4).sharpen({ sigma: 0.6 })
     .removeAlpha().raw().toBuffer();
   // Light grain + gentle posterize: old-console feel without losing the face.
