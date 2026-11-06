@@ -1,6 +1,6 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { isActivity } from '@/lib/activities';
-import { CharacterError, drawStill } from '@/lib/server/character';
+import { CharacterError, drawPixelPortrait, drawStill, openAIConfigured } from '@/lib/server/character';
 import { fail, requireUser, useQuota } from '@/lib/server/characterRoute';
 
 export const runtime = 'nodejs';
@@ -36,8 +36,11 @@ export async function POST(req: NextRequest) {
       photo = data;
     }
 
-    await useQuota(db, user.id, 'still');
-    const sprite = await drawStill(Buffer.from(photo.data, 'base64'), photo.mime);
+    // With an OpenAI key the AI draws the character; without one the site makes a free pixel portrait itself.
+    const ai = openAIConfigured();
+    if (ai) await useQuota(db, user.id, 'still');
+    const bytes = Buffer.from(photo.data, 'base64');
+    const sprite = ai ? await drawStill(bytes, photo.mime) : await drawPixelPortrait(bytes);
     const { data: saved, error } = await db.from('characters').upsert({
       user_id: user.id, sprite_png: sprite.toString('base64'), anim_gif: null, anim_status: 'none', anim_note: '', activity,
     }).select('token, activity, anim_status').single();

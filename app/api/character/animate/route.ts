@@ -1,6 +1,6 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { isActivity } from '@/lib/activities';
-import { CharacterError, drawAnimation } from '@/lib/server/character';
+import { CharacterError, drawAnimation, openAIConfigured } from '@/lib/server/character';
 import { fail, requireUser, useQuota } from '@/lib/server/characterRoute';
 
 export const runtime = 'nodejs';
@@ -19,6 +19,13 @@ export async function POST(req: NextRequest) {
   const activity = body.activity;
   const { data: ch } = await db.from('characters').select('sprite_png').eq('user_id', user.id).maybeSingle();
   if (!ch?.sprite_png) return NextResponse.json({ error: 'Make your character first.' }, { status: 400 });
+
+  if (!openAIConfigured()) {
+    const { data: saved } = await db.from('characters')
+      .update({ activity, anim_gif: null, anim_status: 'none', anim_note: '' })
+      .eq('user_id', user.id).select('token, activity').single();
+    return NextResponse.json({ character: saved ? { token: saved.token, activity: saved.activity, anim: false } : null, mode: 'free' });
+  }
 
   try {
     await useQuota(db, user.id, 'animation');

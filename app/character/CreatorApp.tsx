@@ -17,6 +17,7 @@ interface Props {
   showPublicly: boolean;
   hasPhoto: boolean;
   isNew: boolean;
+  aiEnabled: boolean;
 }
 
 type Busy = null | 'drawing' | 'animating';
@@ -37,7 +38,7 @@ async function shrinkPhoto(file: File): Promise<{ mime: string; data: string; pr
   }
 }
 
-export function CreatorApp({ userId, name: initialName, initial, animNote, showPublicly: initialShow, hasPhoto: initialHasPhoto, isNew }: Props) {
+export function CreatorApp({ userId, name: initialName, initial, animNote, showPublicly: initialShow, hasPhoto: initialHasPhoto, isNew, aiEnabled }: Props) {
   const db = supabaseBrowser();
   const router = useRouter();
   const fileRef = useRef<HTMLInputElement>(null);
@@ -77,7 +78,8 @@ export function CreatorApp({ userId, name: initialName, initial, animNote, showP
     const body = await res.json().catch(() => ({}));
     setBusy(null);
     if (body.character) setCharacter(body.character);
-    if (body.animationError) setNote(body.animationError);
+    if (body.mode === 'free') setNote('');
+    else if (body.animationError) setNote(body.animationError);
     else if (res.ok) setNote('');
     else { setError(body.error ?? 'The animation didn’t work.'); setNote(body.error ?? ''); }
     router.refresh();
@@ -125,7 +127,7 @@ export function CreatorApp({ userId, name: initialName, initial, animNote, showP
         <div className="creator">
           <section className="creator-stage" aria-live="polite">
             {busy ? (
-              <p className="stage-busy">{busy === 'drawing' ? 'Drawing your character…' : 'Animating…'}<br /><small>This can take up to a minute</small></p>
+              <p className="stage-busy">{busy === 'drawing' ? 'Drawing your character…' : 'Animating…'}<br /><small>{aiEnabled ? 'This can take up to a minute' : 'Just a moment'}</small></p>
             ) : character ? (
               <CharacterSprite character={character} name={savedName} size={192} activityOverride={previewActivity} />
             ) : photo ? (
@@ -137,7 +139,7 @@ export function CreatorApp({ userId, name: initialName, initial, animNote, showP
               <p className="stage-caption">
                 {previewActivity ? <span className="anim-label">Preview · tap “Animate” to make it</span>
                   : character.anim ? <span className="anim-label is-ai">✨ AI animation</span>
-                  : <span className="anim-label">Animated in your browser</span>}
+                  : <span className="anim-label">{aiEnabled ? 'Animated in your browser' : '8-bit you · animated in your browser'}</span>}
               </p>
             )}
           </section>
@@ -157,7 +159,9 @@ export function CreatorApp({ userId, name: initialName, initial, animNote, showP
                 </div>
                 <input ref={fileRef} id="ch-photo" type="file" accept="image/*" className="sr-only" tabIndex={-1} aria-label="Choose a photo from files" onChange={(e) => pickPhoto(e.target.files?.[0])} />
               </div>
-              <p className="field-note">Your photo is sent to OpenAI only to draw your character, and stored privately so you can regenerate later. Delete it any time.</p>
+              <p className="field-note">{aiEnabled
+                ? 'Your photo is sent to OpenAI only to draw your character, and stored privately so you can regenerate later. Delete it any time.'
+                : 'This website turns your photo into pixel art itself: nothing is sent anywhere else. Your photo is stored privately so you can redo it later. Delete it any time.'}</p>
             </div>
 
             <div className="field">
@@ -180,9 +184,9 @@ export function CreatorApp({ userId, name: initialName, initial, animNote, showP
               <button type="button" className="btn btn-8bit" disabled={Boolean(busy)} onClick={generate}>Generate my Christmas character 🎅</button>
             ) : (
               <div className="creator-actions">
-                {(previewActivity || !character.anim) && (
+                {(previewActivity || (aiEnabled && !character.anim)) && (
                   <button type="button" className="btn btn-primary" disabled={Boolean(busy)} onClick={() => animate(activity)}>
-                    {previewActivity ? `Animate: ${ACTIVITIES[activity].label}` : 'Try the AI animation again'}
+                    {previewActivity ? (aiEnabled ? `Animate: ${ACTIVITIES[activity].label}` : `Use: ${ACTIVITIES[activity].label}`) : 'Try the AI animation again'}
                   </button>
                 )}
                 <button type="button" className="btn btn-soft" disabled={Boolean(busy) || (!photo && !hasPhoto)} onClick={generate}>

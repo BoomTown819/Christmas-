@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { redirect } from 'next/navigation';
 import { isActivity, type CharacterCard } from '@/lib/activities';
+import { openAIConfigured } from '@/lib/server/character';
 import { getSessionUser } from '@/lib/supabase/server';
 import { CreatorApp } from './CreatorApp';
 
@@ -28,6 +29,7 @@ export default async function CharacterPage({ searchParams }: { searchParams: { 
       showPublicly={ch?.show_publicly ?? true}
       hasPhoto={Boolean(photo)}
       isNew={searchParams.new === '1'}
+      aiEnabled={openAIConfigured()}
     />
   );
 }
