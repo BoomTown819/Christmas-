@@ -27,7 +27,7 @@ export function ProfileForm({ profile, email }: { profile: Profile; email: strin
         <input id="pf-name" value={name} maxLength={40} onChange={(e) => { setName(e.target.value); setMsg(null); }} /></div>
       <div className="field"><span className="label">Avatar</span>
         <AvatarPicker avatar={avatar} color={color} onChange={(a, c) => { setAvatar(a); setColor(c); setMsg(null); }} /></div>
-      <div className="field"><span className="label">Email</span><p className="muted">{email} · only you can see this</p></div>
+      {email && <div className="field"><span className="label">Email</span><p className="muted">{email} · only you can see this</p></div>}
       <div className="panel-actions">
         <button type="submit" className="btn btn-primary" disabled={busy}>{busy ? 'Saving…' : 'Save profile'}</button>
         {msg && <span className="muted" role="status">{msg}</span>}

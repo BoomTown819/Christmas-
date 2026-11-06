@@ -24,7 +24,7 @@ export async function SiteHeader() {
           ) : (
             <>
               <Link href="/login">Log in</Link>
-              <Link href="/signup" className="nav-cta">Sign up</Link>
+              <Link href="/signup" className="nav-cta">Get started</Link>
             </>
           )}
         </nav>

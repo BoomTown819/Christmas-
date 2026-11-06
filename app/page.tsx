@@ -16,7 +16,7 @@ export default async function Home() {
           eyebrow="Our Christmas 🎄"
           title="One wishlist each. One place for the whole family."
           sub="Make your list, share one link, and let everyone secretly claim the gifts they’re buying. You’ll never see what’s been claimed on yours."
-          actions={<><Link href="/signup" className="btn btn-festive btn-lg">Make my wishlist</Link><Link href="/login" className="btn btn-soft btn-lg">Log in</Link></>}
+          actions={<><Link href="/signup" className="btn btn-festive btn-lg">Make my wishlist</Link><Link href="/login" className="btn btn-soft btn-lg">I saved my account</Link></>}
         />
         <main className="main">
           <section className="how">
@@ -33,7 +33,7 @@ export default async function Home() {
             ))}
           </section>
           <section className="join-panel">
-            <div><h2>Got an invitation code?</h2><p>Enter it to see which family invited you. You’ll make an account next.</p></div>
+            <div><h2>Got an invitation code?</h2><p>Enter it to see which family invited you. Joining only takes your name.</p></div>
             <JoinByCode />
           </section>
         </main>

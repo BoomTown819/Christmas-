@@ -16,5 +16,5 @@ export default async function MyListPage() {
   ]);
   if (!profile || !wishlist) redirect('/login');
   const { data: rows } = await db.from('wishlist_items').select('*, item_private_notes(note)').eq('wishlist_id', wishlist.id).order('position');
-  return <MyListApp profile={profile} wishlist={wishlist} initialItems={(rows as ItemRow[] | null ?? []).map(fromRow)} />;
+  return <MyListApp profile={profile} wishlist={wishlist} anonymous={Boolean(user.is_anonymous) && !user.email} initialItems={(rows as ItemRow[] | null ?? []).map(fromRow)} />;
 }

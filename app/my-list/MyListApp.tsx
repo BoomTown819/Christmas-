@@ -22,9 +22,9 @@ import { filterByRating, FILTER_LABELS, sortItems } from '@/lib/organize';
 import { rememberOwnedList } from '@/lib/ownedLists';
 import type { ItemDraft, MyWishlist, Profile, RatingFilter, SortKey, WishlistItem } from '@/types';
 
-interface Props { profile: Profile; wishlist: MyWishlist; initialItems: WishlistItem[] }
+interface Props { profile: Profile; wishlist: MyWishlist; initialItems: WishlistItem[]; anonymous?: boolean }
 
-export function MyListApp({ profile, wishlist, initialItems }: Props) {
+export function MyListApp({ profile, wishlist, initialItems, anonymous }: Props) {
   const list = useMyWishlist(wishlist.id, profile.id, initialItems);
   const { items } = list;
   const [sort, setSort] = useState<SortKey>('custom');
@@ -121,6 +121,7 @@ export function MyListApp({ profile, wishlist, initialItems }: Props) {
 
       <main className="main">
         <p className="secret-note"><span aria-hidden="true">🤫</span> Gift claims on your own list are kept secret from you, so Christmas morning is still a surprise. <Link href={`/list/${slug}`}>See what family sees</Link></p>
+        {anonymous && <p className="secret-note" data-testid="device-note"><span aria-hidden="true">📱</span> Your list is saved on this device. <Link href="/profile">Add an email</Link> to open it on another phone or computer.</p>}
 
         {items.length === 0 ? (
           <EmptyState onAdd={openAdd} />

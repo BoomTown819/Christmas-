@@ -183,7 +183,7 @@ function BuyerView({ list, items, viewerName, signedIn }: { list: PublicWishlist
 
       {!signedIn && (
         <aside className="cta-band">
-          <div><h2>Make your own wishlist</h2><p>Free, takes a minute, and your family can claim gifts for you in secret.</p></div>
+          <div><h2>Make your own wishlist</h2><p>Free, takes your name and nothing else, and your family can claim gifts for you in secret.</p></div>
           <Link href="/signup" className="btn btn-gold btn-lg">Make my list</Link>
         </aside>
       )}

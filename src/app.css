@@ -176,3 +176,5 @@ a { color: var(--green-ink); }
 
 /* Cards that tuck up into the hero sit above its snowy hills. */
 .summary, .buyer-summary, .family-bar, .how, .family-start, .empty, .notice-owner { position: relative; z-index: 3; }
+.panel-save { border-color: color-mix(in srgb, var(--gold) 45%, var(--line)); background: linear-gradient(180deg, var(--gold-soft), var(--surface) 55%); }
+.panel-save h2 { font-family: var(--font-display); font-weight: 400; font-size: 24px; }

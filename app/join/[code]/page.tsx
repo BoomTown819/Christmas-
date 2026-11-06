@@ -37,8 +37,8 @@ export default async function JoinPage({ params }: { params: { code: string } })
           : <JoinButton code={params.code} familyName={inv.family_name} />
       ) : (
         <div className="form">
-          <Link href={`/signup?next=${encodeURIComponent(back)}`} className="btn btn-festive btn-lg">Sign up to join</Link>
-          <p className="authcard-alt">Already have an account? <Link href={`/login?next=${encodeURIComponent(back)}`}>Log in</Link></p>
+          <Link href={`/signup?next=${encodeURIComponent(back)}`} className="btn btn-festive btn-lg">Join with just your name</Link>
+          <p className="authcard-alt">Saved your account with an email? <Link href={`/login?next=${encodeURIComponent(back)}`}>Log in</Link></p>
         </div>
       )}
     </AuthShell>

@@ -15,8 +15,9 @@ Built with Next.js 14 (App Router), React, TypeScript and Supabase (Auth, Postgr
 3. Open **Authentication → URL Configuration**:
    - **Site URL**: your site's address (for example `https://our-christmas.vercel.app`, or `http://localhost:3000` while testing).
    - **Redirect URLs**: add `https://YOUR-SITE/auth/callback` (and `http://localhost:3000/auth/callback`).
-4. Optional: **Authentication → Providers → Email**. "Confirm email" is on by default, so new users click a link before they can log in. Turn it off if you'd rather skip that step for family.
-5. Optional but recommended for real emails: **Project Settings → Authentication → SMTP**. Supabase's built-in sender is rate-limited to a few emails per hour.
+4. **Required: Authentication → Sign In / Providers → turn on “Allow anonymous sign-ins”.** People sign up with just their name and an avatar, no email or password. Their account lives on that device until they add an email on their profile, which lets them log in anywhere.
+5. Optional: **Authentication → Providers → Email**. "Confirm email" is on by default, so new users click a link before they can log in. Turn it off if you'd rather skip that step for family.
+6. Optional but recommended for real emails: **Project Settings → Authentication → SMTP**. Supabase's built-in sender is rate-limited to a few emails per hour.
 
 ### 2. Configure and run
 ```bash
