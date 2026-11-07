@@ -55,7 +55,7 @@ a { color: var(--green-ink); }
 }
 .card.is-purchased .claim-ribbon { background: rgb(15 77 50 / 0.92); }
 .card.is-mine .claim-ribbon { background: linear-gradient(90deg, #b3262d, #8e1b24); color: #fff; }
-.card.is-claimed .card-media img, .card.is-purchased .card-media img, .card.is-claimed .placeholder, .card.is-purchased .placeholder { filter: saturate(0.4) brightness(0.92); }
+.card.is-claimed .card-media > img, .card.is-purchased .card-media > img, .card.is-claimed .placeholder, .card.is-purchased .placeholder { filter: saturate(0.4) brightness(0.92); }
 .buyer-actions { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; width: 100%; }
 .mine-actions { display: flex; flex-wrap: wrap; gap: 6px; }
 .claimed-note { font-size: 13px; font-weight: 600; color: var(--muted); }

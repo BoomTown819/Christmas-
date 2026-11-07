@@ -59,6 +59,9 @@ export const ItemCard = memo(function ItemCard({ item, index, readOnly, highligh
         ) : (
           <GiftPlaceholder seed={item.name.length} />
         )}
+        {!readOnly && onEdit && !(item.imageUrl && imgOk) && (
+          <button type="button" className="add-pic-btn" onClick={() => onEdit(item)} aria-label={`Add a picture of ${item.name}`}>📷 Add a picture</button>
+        )}
         <span className="tag">{TIER_LABELS[tier]}</span>
         {status && <span className="claim-ribbon" data-testid="claim-status">{status}</span>}
         {reorder && (

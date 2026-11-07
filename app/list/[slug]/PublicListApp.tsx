@@ -160,7 +160,7 @@ function BuyerView({ list, items, viewerName, signedIn }: { list: PublicWishlist
             const c = claims.get(item.id);
             const text = c ? (c.is_mine ? (c.status === 'purchased' ? 'You bought this ✓' : 'You’re getting this') : `${c.status === 'purchased' ? 'Bought' : 'Claimed'} by ${c.claimer_name}`) : undefined;
             // The claimer's 8-bit character. Only gift buyers ever receive claim data, so the list's owner never sees this.
-            const status = c ? <>{<CharacterSprite character={c.claimer_character} name={c.claimer_name} size={32} compact />}<span>{text}</span></> : undefined;
+            const status = c ? <>{<CharacterSprite character={c.claimer_character} name={c.claimer_name} size={72} compact className="claim-char" />}<span>{text}</span></> : undefined;
             return (
               <ItemCard key={item.id} item={item} index={i} readOnly status={status}
                 statusTone={c ? (c.is_mine ? 'mine' : c.status) : undefined}

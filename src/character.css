@@ -79,7 +79,11 @@
 
 /* claim badge */
 .claim-ribbon { display: flex; align-items: center; justify-content: center; gap: 8px; }
-.claim-ribbon .char { margin-block: -10px -6px; }
+.claim-ribbon { min-height: 46px; }
+/* The claimer's character stands on the banner, poking up into the picture above it. */
+.claim-ribbon .claim-char { flex: none; width: 72px; height: 72px; margin-top: -40px; margin-bottom: -10px; filter: drop-shadow(0 2px 2px rgb(0 0 0 / 0.35)); }
+.claim-ribbon .claim-char img { width: 100%; height: 100%; padding: 0; background: none; object-fit: contain; image-rendering: pixelated; }
+@media (max-width: 420px) { .claim-ribbon .claim-char { width: 64px; height: 64px; margin-top: -34px; } }
 
 /* member cards */
 .member-head .char { margin: -6px -4px -4px -8px; }

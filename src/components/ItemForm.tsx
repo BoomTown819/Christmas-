@@ -70,7 +70,10 @@ export function ItemForm({ open, editing, onClose, onSave }: Props) {
     mine.current = editing
       ? { name: true, price: true, image: Boolean(editing.imageUrl), desc: Boolean(editing.description) }
       : {};
-    return () => { abortRef.current?.abort(); if (debounceRef.current) clearTimeout(debounceRef.current); };
+    // An item without a picture: look its link up straight away to try to find one.
+    const autoFind = editing && !editing.imageUrl && editing.url ? setTimeout(() => runLookup(editing.url), 60) : null;
+    return () => { if (autoFind) clearTimeout(autoFind); abortRef.current?.abort(); if (debounceRef.current) clearTimeout(debounceRef.current); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, editing]);
 
   const urlCheck = parseUrl(url);
@@ -228,6 +231,9 @@ export function ItemForm({ open, editing, onClose, onSave }: Props) {
             </div>
           </div>
           {imgBroken && imageUrl && <p className="field-note">That picture couldn’t be shown. Upload your own instead.</p>}
+          {!hasImage && result && result.status !== 'found' && (
+            <p className="field-note">Tip: on the store’s page, save the product photo (or take a screenshot) and upload it here. On a computer you can also right-click the photo, choose “Copy image address” and paste it under “Or paste a picture link”.</p>
+          )}
           {uploadError && <p className="field-error">{uploadError}</p>}
           {showImageLink && (
             <input id="f-image" aria-label="Picture link" value={imageUrl.startsWith('/api/') ? '' : imageUrl} placeholder="https://…/photo.jpg" autoComplete="off"
