@@ -1,5 +1,5 @@
 'use client';
-import { useEffect, useRef, useState, type FormEvent } from 'react';
+import { useLayoutEffect, useRef, useState, type FormEvent } from 'react';
 import type { ProductResponse } from '../lib/server/types';
 import { lookupProduct, uploadItemImage } from '../lib/productClient';
 import { centsToInput, formatUSD, parsePrice } from '../lib/money';
@@ -48,7 +48,8 @@ export function ItemForm({ open, editing, onClose, onSave }: Props) {
   /** Fields the person typed into themselves. Autofill never overwrites these. */
   const mine = useRef<Partial<Record<Field, boolean>>>({});
 
-  useEffect(() => {
+  // Reset before the form is painted, so nothing typed the instant it opens is wiped.
+  useLayoutEffect(() => {
     if (!open) return;
     setName(editing?.name ?? '');
     setUrl(editing?.url ?? '');

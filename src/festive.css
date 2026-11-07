@@ -190,20 +190,54 @@
   .pagehead-deco { display: none; }
 }
 @media (max-width: 560px) {
-  .brand-text { display: none; }
-  .nav a, .nav button.navlink { padding: 8px 9px; font-size: 13px; }
+  .nav a, .nav button.navlink { font-size: 14px; }
 }
 
-/* ---------- back button (lives in the top bar so the lights never cover it) ---------- */
-.sitebar-left { display: flex; align-items: center; gap: 10px; min-width: 0; }
+/* ---------- top bar buttons: Back + Home on the left, labeled links on the right ---------- */
+.sitebar-left { display: flex; align-items: center; gap: 8px; min-width: 0; }
 .back-btn {
-  display: inline-flex; align-items: center; gap: 6px; min-height: 38px; padding: 7px 14px;
+  display: inline-flex; align-items: center; gap: 6px; min-height: 44px; padding: 0 16px;
   border-radius: 999px; border: 1px solid rgb(255 255 255 / 0.28); background: rgb(255 255 255 / 0.1);
-  color: var(--hero-ink); font: inherit; font-weight: 700; font-size: 15px; cursor: pointer; white-space: nowrap;
+  color: var(--hero-ink); font: inherit; font-weight: 700; font-size: 15px; cursor: pointer; white-space: nowrap; text-decoration: none;
 }
 .back-btn:hover { background: rgb(255 255 255 / 0.2); }
-.back-btn:focus-visible { outline: 3px solid var(--gold, #e0b23c); outline-offset: 2px; }
-@media (max-width: 560px) { .sitebar-left:has(.back-btn) .brand-text { display: none; } }
+.back-btn:focus-visible, .navlink-top:focus-visible, .tab:focus-visible { outline: 3px solid var(--gold, #e0b23c); outline-offset: 2px; }
+/* Home replaces the logo on inner pages */
+.sitebar-left:has(.back-btn) .brand { display: none; }
+.brand { min-height: 44px; }
+.nav a.navlink-top, .nav .nav-cta {
+  display: inline-flex; align-items: center; gap: 7px; min-height: 44px; padding: 0 14px; font-size: 15px;
+}
+.nav .avatar-link { padding: 0 14px 0 6px; }
+.avatar-link-name { max-width: 12ch; overflow: hidden; text-overflow: ellipsis; }
+
+/* Phones: Back + Home stay on top; everything else moves to a big tab bar at the bottom. */
+.tabbar { display: none; }
+@media (max-width: 760px) {
+  .sitebar .nav .navlink-top { display: none; }
+  .sitebar-inner { height: 64px; }
+  .tabbar {
+    display: grid; grid-template-columns: repeat(4, minmax(0, 1fr));
+    position: fixed; left: 0; right: 0; bottom: 0; z-index: 45;
+    padding: 6px max(6px, env(safe-area-inset-left, 0px)) calc(6px + env(safe-area-inset-bottom, 0px)) max(6px, env(safe-area-inset-right, 0px));
+    background: rgb(10 31 20 / 0.97); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+    border-top: 1px solid rgb(255 255 255 / 0.12); box-shadow: 0 -8px 24px -12px rgb(0 0 0 / 0.5);
+  }
+  .tab {
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
+    min-height: 58px; border-radius: 14px; text-decoration: none; color: var(--hero-muted, #c9d6cc);
+    font-weight: 700; font-size: 13px;
+  }
+  .tab-icon { font-size: 22px; line-height: 1; display: grid; place-items: center; height: 28px; }
+  .tab.is-active { color: #fff; background: rgb(255 255 255 / 0.12); }
+  .tab.is-active .tab-label { color: var(--gold, #e0b23c); }
+  body:has(.tabbar) { padding-bottom: calc(76px + env(safe-area-inset-bottom, 0px)); }
+  body:has(.tabbar) .fab { bottom: calc(86px + env(safe-area-inset-bottom, 0px)); }
+  .toasts { top: calc(10px + env(safe-area-inset-top, 0px)) !important; bottom: auto !important; z-index: 200; }
+}
+@media (max-width: 380px) {
+  .back-btn { padding: 0 13px; font-size: 14px; }
+}
 
 /* big "go to my list" at the bottom of the character page */
 .btn-go-list { display: flex; width: 100%; justify-content: center; margin-top: 22px; min-height: 60px; font-size: 19px; letter-spacing: 0.03em; }

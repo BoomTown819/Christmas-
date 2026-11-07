@@ -128,7 +128,7 @@ export function MyListApp({ profile, wishlist, initialItems, anonymous, characte
         {items.length === 0 ? (
           <>
             <EmptyState onAdd={openAdd} />
-            <p className="secret-note"><span aria-hidden="true">🤫</span> Gift claims on your own list are kept secret from you, so Christmas morning is still a surprise. <Link href={`/list/${slug}`}>See what family sees</Link></p>
+            <p className="secret-note"><span aria-hidden="true">🤫</span> Gift claims on your own list are kept secret from you, so Christmas morning is still a surprise. <Link className="btn btn-sm btn-ghost secret-note-btn" href={`/list/${slug}`}>👀 See what family sees</Link></p>
             {!character && (
               <div className="char-cta" data-testid="character-cta">
                 <div><strong>Make your 8-bit Christmas character</strong><p>Upload a photo and it turns into a little pixel you that shows up on the dashboard and next to the gifts you claim.</p></div>
@@ -140,7 +140,7 @@ export function MyListApp({ profile, wishlist, initialItems, anonymous, characte
         ) : (
           <>
             <Summary items={items} totalCents={list.totalCents} />
-            <p className="secret-note"><span aria-hidden="true">🤫</span> Gift claims on your own list are kept secret from you, so Christmas morning is still a surprise. <Link href={`/list/${slug}`}>See what family sees</Link></p>
+            <p className="secret-note"><span aria-hidden="true">🤫</span> Gift claims on your own list are kept secret from you, so Christmas morning is still a surprise. <Link className="btn btn-sm btn-ghost secret-note-btn" href={`/list/${slug}`}>👀 See what family sees</Link></p>
             {!character && (
               <div className="char-cta" data-testid="character-cta">
                 <div><strong>Make your 8-bit Christmas character</strong><p>Upload a photo and it turns into a little pixel you that shows up on the dashboard and next to the gifts you claim.</p></div>
@@ -181,7 +181,7 @@ export function MyListApp({ profile, wishlist, initialItems, anonymous, characte
         )}
       </main>
 
-      <button type="button" className="fab" onClick={openAdd} aria-label="Add item"><PlusIcon size={26} /></button>
+      <button type="button" className="fab" onClick={openAdd}><PlusIcon size={22} /> Add item</button>
       <ItemForm key={formOpen ? editing?.id ?? 'new' : 'closed'} open={formOpen} editing={editing} onClose={() => setFormOpen(false)} onSave={save} />
       <ConfirmDialog open={confirmClear} title="Clear your whole wishlist?" confirmLabel="Clear wishlist"
         message={`This deletes all ${items.length} items for everyone who has your link. It can’t be undone.`}

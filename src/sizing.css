@@ -1,0 +1,85 @@
+/* =====================================================================
+   Big, labeled controls everywhere (loaded last).
+   Every button, link-button, chip, menu and text box is at least 44px tall,
+   which is the comfortable size for a fingertip.
+   ===================================================================== */
+.btn { height: auto; min-height: 46px; font-size: 15px; }
+.btn-sm { height: auto; min-height: 44px; padding: 0 16px; font-size: 14.5px; }
+.btn-lg { height: auto; min-height: 54px; font-size: 17px; }
+.icon-btn { width: auto; min-width: 44px; height: 44px; }
+
+/* filter / family / outfit chips */
+.fchip { height: auto; min-height: 44px; padding: 0 16px; font-size: 14.5px; }
+.outfit-chips .fchip { height: auto; min-height: 44px; }
+
+/* sort menu */
+.select { min-height: 46px; }
+.select select { min-height: 44px; font-size: 15px; }
+
+/* text boxes */
+input:not([type=checkbox]):not([type=radio]):not([type=range]):not([type=file]):not(.sr-only),
+select { min-height: 44px; }
+input[type=checkbox], input[type=radio] { width: 22px; height: 22px; accent-color: var(--green); flex: none; }
+
+/* text-style buttons still get a full-size tap area */
+.linkish { display: inline-flex; align-items: center; min-height: 44px; padding: 0 4px; font-size: 14.5px; }
+.small-link { display: inline-flex; align-items: center; min-height: 44px; }
+.authcard-alt a, .field-note a { display: inline-flex; align-items: center; min-height: 44px; }
+
+/* dialog close button now says "Close" */
+.modal-close { flex: none; gap: 6px; }
+
+/* item cards: labeled Edit / Delete / Up / Down */
+.card-tools { display: flex; gap: 6px; flex-wrap: wrap; }
+.card-actions { flex-wrap: wrap; row-gap: 10px; }
+.reorder { padding: 4px; gap: 4px; }
+.reorder-btn {
+  display: inline-flex; align-items: center; gap: 4px; min-height: 40px; min-width: 44px; padding: 0 12px;
+  border: 0; border-radius: 999px; background: var(--surface-2); color: var(--ink); font-weight: 700; font-size: 14px; cursor: pointer;
+}
+.reorder-btn:hover:not(:disabled) { background: var(--gold-soft); }
+.reorder-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+/* floating add button: a labeled pill */
+.fab { width: auto; height: 56px; padding: 0 22px 0 18px; border-radius: 999px; gap: 8px; font-weight: 800; font-size: 16px; grid-auto-flow: column; }
+
+/* avatar picker: every choice has its name under it */
+.avatar-grid { grid-template-columns: repeat(auto-fill, minmax(76px, 1fr)); gap: 8px; }
+.avatar-opt { width: auto; height: auto; min-height: 70px; display: grid; place-items: center; gap: 2px; padding: 8px 4px; }
+.avatar-opt-emoji { font-size: 26px; line-height: 1; }
+.avatar-opt-name { font-size: 12.5px; font-weight: 600; color: var(--muted); line-height: 1.1; }
+.avatar-opt.is-on .avatar-opt-name { color: var(--ink); }
+.color-row { flex-wrap: wrap; gap: 8px; }
+.color-opt {
+  width: auto; height: auto; min-height: 44px; display: inline-flex; align-items: center; gap: 8px; padding: 0 14px 0 8px;
+  border-radius: 999px; border: 1.5px solid var(--line); background: var(--bg); box-shadow: none; font-weight: 600; font-size: 14px;
+}
+.color-opt.is-on { border-color: var(--gold); box-shadow: var(--ring); }
+.color-dot { width: 26px; height: 26px; border-radius: 50%; flex: none; box-shadow: inset 0 0 0 1px rgb(0 0 0 / 0.12); }
+@media (max-width: 440px) { .avatar-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+
+/* the "see what family sees" link is a real button */
+.secret-note-btn { margin-top: 8px; }
+.secret-note { align-items: center; }
+
+/* "Add a picture" on cards */
+.add-pic-btn { min-height: 44px; }
+
+/* Long button labels wrap instead of pushing the page wider than a phone screen. */
+.btn { white-space: normal; text-align: center; max-width: 100%; line-height: 1.2; padding-block: 8px; }
+.main, .main > *, .panel, .card, .empty, .char-cta, .char-layout > *, .form, .field { min-width: 0; }
+@media (max-width: 420px) { .btn-8bit { font-size: 12px; letter-spacing: 0.04em; } }
+
+/* Hidden-but-readable helpers never take up room */
+.sr-only { position: absolute !important; width: 1px !important; height: 1px !important; min-height: 0 !important; padding: 0 !important; margin: -1px !important; border: 0 !important; overflow: hidden !important; clip: rect(0 0 0 0) !important; white-space: nowrap !important; }
+
+/* Sort menu + filter chips fit on a phone */
+.toolbar, .toolbar-organize, .toolbar-actions { min-width: 0; max-width: 100%; }
+.toolbar-organize > * { min-width: 0; max-width: 100%; }
+.select { max-width: 100%; min-width: 0; }
+.select select { min-width: 0; max-width: 100%; flex: 1 1 auto; text-overflow: ellipsis; }
+.filter-chips { max-width: 100%; position: relative; }
+
+/* Character activity choices */
+.activity-opt { min-height: 48px; }
+.toast button { min-height: 44px; padding: 0 16px; font-size: 14.5px; }

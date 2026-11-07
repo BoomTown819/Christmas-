@@ -1,4 +1,5 @@
 'use client';
+import Link from 'next/link';
 import { useEffect } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 
@@ -6,8 +7,7 @@ import { usePathname, useRouter } from 'next/navigation';
 let pagesSeen = 0;
 let lastPath: string | null = null;
 
-/** "← Back" on every page except the home dashboard. Goes to the previous page,
- *  or home if this page was opened straight from a link. */
+/** "← Back" and "🏠 Home" on every page except the home dashboard itself. */
 export function BackButton() {
   const path = usePathname();
   const router = useRouter();
@@ -23,6 +23,9 @@ export function BackButton() {
     if (canGoBack) router.back(); else router.push('/');
   };
   return (
-    <button type="button" className="back-btn" onClick={goBack}><span aria-hidden="true">←</span> Back</button>
+    <>
+      <button type="button" className="back-btn" onClick={goBack}><span aria-hidden="true">←</span> Back</button>
+      <Link href="/" className="back-btn home-btn" title="Everyone’s wishlists"><span aria-hidden="true">🏠</span> Home</Link>
+    </>
   );
 }

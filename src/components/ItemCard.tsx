@@ -67,8 +67,8 @@ export const ItemCard = memo(function ItemCard({ item, index, readOnly, highligh
         {reorder && (
           <span className="reorder" aria-label="Reorder">
             <span className="drag-grip" title="Drag to rearrange" aria-hidden="true">⋮⋮</span>
-            <button type="button" className="icon-btn icon-btn-sm" onClick={reorder.onUp} disabled={!reorder.canUp} aria-label={`Move ${item.name} earlier`}>↑</button>
-            <button type="button" className="icon-btn icon-btn-sm" onClick={reorder.onDown} disabled={!reorder.canDown} aria-label={`Move ${item.name} later`}>↓</button>
+            <button type="button" className="reorder-btn" onClick={reorder.onUp} disabled={!reorder.canUp} aria-label={`Move ${item.name} earlier (up)`}><span aria-hidden="true">↑</span> Up</button>
+            <button type="button" className="reorder-btn" onClick={reorder.onDown} disabled={!reorder.canDown} aria-label={`Move ${item.name} later (down)`}><span aria-hidden="true">↓</span> Down</button>
           </span>
         )}
       </div>
@@ -123,8 +123,8 @@ export const ItemCard = memo(function ItemCard({ item, index, readOnly, highligh
             </a>
             {!readOnly && (
               <div className="card-tools">
-                <button type="button" className="icon-btn" onClick={() => onEdit?.(item)} aria-label={`Edit ${item.name}`} title="Edit"><EditIcon /></button>
-                <button type="button" className="icon-btn icon-btn-danger" onClick={() => setConfirming(true)} aria-label={`Delete ${item.name}`} title="Delete"><TrashIcon /></button>
+                <button type="button" className="btn btn-sm btn-ghost" onClick={() => onEdit?.(item)} aria-label={`Edit ${item.name}`}><EditIcon size={16} /> Edit</button>
+                <button type="button" className="btn btn-sm btn-ghost btn-quiet-danger" onClick={() => setConfirming(true)} aria-label={`Delete ${item.name}`}><TrashIcon size={16} /> Delete</button>
               </div>
             )}
           </>

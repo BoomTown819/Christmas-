@@ -7,6 +7,7 @@ import '@/styles.css';
 import '@/festive.css';
 import '@/app.css';
 import '@/character.css';
+import '@/sizing.css';
 
 // Public address for link previews. On Vercel this is filled in automatically.
 const site =

@@ -21,7 +21,8 @@ export function Modal({ open, onClose, title, children, footer, size = 'md' }: P
     lastFocus.current = document.activeElement as HTMLElement;
     const t = setTimeout(() => {
       const first = panel.current?.querySelector<HTMLElement>('[data-autofocus]') ?? panel.current?.querySelector<HTMLElement>('input, textarea, select, button');
-      first?.focus();
+      // Don't move the cursor if the person already clicked into the dialog.
+      if (!panel.current?.contains(document.activeElement)) first?.focus();
     }, 30);
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') onClose();
@@ -49,8 +50,9 @@ export function Modal({ open, onClose, title, children, footer, size = 'md' }: P
       <div ref={panel} className={`modal modal-${size}`} role="dialog" aria-modal="true" aria-label={title}>
         <header className="modal-head">
           <h2>{title}</h2>
-          <button type="button" className="icon-btn" onClick={onClose} aria-label="Close">
-            <svg viewBox="0 0 24 24" width="20" height="20"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" /></svg>
+          <button type="button" className="btn btn-ghost btn-sm modal-close" onClick={onClose}>
+            <svg aria-hidden="true" viewBox="0 0 24 24" width="16" height="16"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" /></svg>
+            Close
           </button>
         </header>
         <div className="modal-body">{children}</div>
