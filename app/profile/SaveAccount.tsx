@@ -49,8 +49,8 @@ export function SaveAccount({ anonymous, pendingEmail }: { anonymous: boolean; p
   return (
     <section className="panel panel-save" data-testid="save-account">
       <div>
-        <h2>Use your list on another device</h2>
-        <p className="muted">Right now your account lives only on this device. Add an email and password and you can log in from any phone or computer. It’s optional.</p>
+        <h2>Or save it with an email</h2>
+        <p className="muted">Prefer an email and password instead of a PIN? Add them here and log in with email on any device. It’s optional.</p>
       </div>
       <form className="form" onSubmit={submit} noValidate>
         <div className="field"><label htmlFor="sa-email">Email</label>
@@ -72,11 +72,11 @@ export function LogoutPanel({ anonymous }: { anonymous: boolean }) {
     <form id="logout-form" action="/auth/signout" method="post" className="panel panel-row">
       <div>
         <h2>Log out</h2>
-        <p className="muted">{anonymous ? 'Save your account with an email first, or you won’t be able to get back into this list.' : 'Your wishlist stays saved in your account.'}</p>
+        <p className="muted">{anonymous ? 'Set a PIN first, or you won’t be able to get back into this list.' : 'Your wishlist stays saved. Log back in any time with your name and PIN.'}</p>
       </div>
       <button type={anonymous ? 'button' : 'submit'} className="btn btn-ghost" onClick={anonymous ? () => setConfirming(true) : undefined}>Log out</button>
-      <ConfirmDialog open={confirming} title="Log out without saving?" confirmLabel="Log out anyway"
-        message="Your account isn’t saved with an email, so once you log out there’s no way back into this wishlist from any device."
+      <ConfirmDialog open={confirming} title="Log out without a PIN?" confirmLabel="Log out anyway"
+        message="You haven’t set a PIN, so once you log out there’s no way back into this wishlist from any device."
         onCancel={() => setConfirming(false)} onConfirm={logout} />
     </form>
   );

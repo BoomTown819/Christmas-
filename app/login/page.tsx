@@ -4,10 +4,10 @@ import { LoginForm } from './LoginForm';
 
 export const metadata: Metadata = { title: 'Log in' };
 
-export default function LoginPage({ searchParams }: { searchParams: { next?: string; reset?: string } }) {
+export default function LoginPage({ searchParams }: { searchParams: { next?: string; reset?: string; email?: string } }) {
   return (
-    <AuthShell title="Welcome back" sub={searchParams.reset ? 'Your password was updated. Log in with the new one.' : 'For accounts you’ve saved with an email. New here? Start with just your name.'}>
-      <LoginForm next={searchParams.next} />
+    <AuthShell title="Welcome back" sub={searchParams.reset ? 'Your password was updated. Log in with the new one.' : 'Type your name and PIN to open your list on this device.'}>
+      <LoginForm next={searchParams.next} startWithEmail={Boolean(searchParams.reset || searchParams.email)} />
     </AuthShell>
   );
 }

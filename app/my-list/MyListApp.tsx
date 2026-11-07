@@ -135,7 +135,7 @@ export function MyListApp({ profile, wishlist, initialItems, anonymous, characte
                 <Link className="btn btn-8bit" href="/character">Generate my Christmas character 🎅</Link>
               </div>
             )}
-            {anonymous && <p className="secret-note" data-testid="device-note">Your list is saved on this device. <Link href="/profile">Add an email</Link> to open it on another phone or computer.</p>}
+            {anonymous && <p className="secret-note" data-testid="device-note">🔐 Your list is only on this device for now. <Link href="/profile#pin">Set a PIN</Link> so you can open it on any phone or computer with your name.</p>}
           </>
         ) : (
           <>
@@ -147,7 +147,7 @@ export function MyListApp({ profile, wishlist, initialItems, anonymous, characte
                 <Link className="btn btn-8bit" href="/character">Generate my Christmas character 🎅</Link>
               </div>
             )}
-            {anonymous && <p className="secret-note" data-testid="device-note">Your list is saved on this device. <Link href="/profile">Add an email</Link> to open it on another phone or computer.</p>}
+            {anonymous && <p className="secret-note" data-testid="device-note">🔐 Your list is only on this device for now. <Link href="/profile#pin">Set a PIN</Link> so you can open it on any phone or computer with your name.</p>}
             <Toolbar
               sort={sort} filter={filter} onSort={setSort} onFilter={setFilter}
               onRandom={() => setRandomOpen(true)}

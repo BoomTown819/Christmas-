@@ -3,7 +3,7 @@
 Needs: the local Supabase stack (stack/start.sh), e2e/fixtures-server.mjs, and the app running with
 ALLOW_PRIVATE_HOSTS=1 METADATA_SERVICE_URL=http://127.0.0.1:9911/microlink ANTHROPIC_API_KEY=test ANTHROPIC_BASE_URL=http://127.0.0.1:9911 on BASE.
 """
-import glob, json, os, quopri, re, time
+import glob, json, os, quopri, re, subprocess, time, urllib.request
 from playwright.sync_api import sync_playwright, expect
 
 BASE = os.environ.get("BASE", "http://localhost:3000")
@@ -16,15 +16,20 @@ SECRET_NAMES = ["Grandma Jo", "Papa Bear"]  # claimer names that must never reac
 PRIVATE_NOTE = "Size medium, the blue one"
 
 def email(who): return f"{who.lower()}-{RUN}@test.local"
+PINS = {"Sonny": "2580", "Mom": "1225", "Dad": "4466"}
+# Sign-in names with a PIN are unique, so clear earlier test runs' PIN names first (local test database only).
+subprocess.run(["psql", "-h", "/tmp", "-p", "54322", "-U", "postgres", "-qc",
+                "delete from public.account_pins where name_key in ('sonny','mom','dad','uncle')"], check=True)
 
 def shot(page, name, full=False):
     if SHOTS: page.screenshot(path=f"{SHOTS}/{name}.png", full_page=full)
 
 def signup(page, name, avatar_idx=0, next_path=None):
-    """Name-only sign-up: no email, no password."""
+    """Name + PIN sign-up: no email, no password."""
     page.goto(f"{BASE}/signup" + (f"?next={next_path}" if next_path else ""))
     assert page.locator("#su-email").count() == 0 and page.locator("#su-pass").count() == 0
     page.fill("#su-name", name)
+    page.fill("#su-pin", PINS[name])
     page.locator(".avatar-opt").nth(avatar_idx).click()
     page.get_by_role("button", name="Start my wishlist").click()
     if not next_path:
@@ -157,7 +162,7 @@ with sync_playwright() as p:
     expect(sonny.get_by_test_id("character-cta")).to_have_count(0)
     expect(sonny.get_by_role("heading", name="Sonny’s Christmas Wishlist")).to_be_visible()
     expect(sonny.get_by_text("Nothing under the tree yet")).to_be_visible()
-    expect(sonny.get_by_test_id("device-note")).to_be_visible()
+    expect(sonny.get_by_test_id("device-note")).to_have_count(0)   # has a PIN, so the list isn't stuck on this device
 
     # AI description from the product page
     sonny.get_by_role("button", name="Add item").first.click()
@@ -282,6 +287,9 @@ with sync_playwright() as p:
     dad.get_by_role("link", name="Join with just your name").click()
     dad.fill("#su-name", "Dad")
     dad.get_by_role("button", name="Start my wishlist").click()
+    expect(dad.get_by_text("Choose a PIN.")).to_be_visible()     # a PIN is required
+    dad.fill("#su-pin", PINS["Dad"])
+    dad.get_by_role("button", name="Start my wishlist").click()
     expect(dad).to_have_url(re.compile(f"/join/{code}"))
     dad.get_by_role("button", name="Join The Christmas Crew").click()
     expect(dad.get_by_test_id("member-card")).to_have_count(3)
@@ -399,12 +407,10 @@ with sync_playwright() as p:
     assert_no_secrets(sonny_bodies, "Sonny signed in")
 
     # signed out on his own device: the device guard still hides claims
-    # a name-only account gets a warning before logging out; Sonny saves his account first
+    # Sonny has a PIN, so logging out is safe (no warning), and his name + PIN bring him back.
     sonny.goto(BASE + "/profile")
-    sonny.get_by_role("button", name="Log out").click()
-    expect(sonny.get_by_role("heading", name="Log out without saving?")).to_be_visible()
-    sonny.get_by_role("button", name="Cancel").click()
-    save_account(sonny, "Sonny")
+    expect(sonny.get_by_test_id("pin-panel")).to_contain_text("log in with Sonny and your PIN")
+    expect(sonny.get_by_test_id("save-account")).to_have_count(0)
     sonny.get_by_role("button", name="Log out").click()
     expect(sonny.locator(".sitebar").get_by_role("link", name="Get started")).to_be_visible()
     assert sonny.locator(".sitebar").get_by_role("link", name="Log in").count() == 0
@@ -413,9 +419,26 @@ with sync_playwright() as p:
     expect(sonny.get_by_test_id("claim-status")).to_have_count(0)
     assert_no_secrets(sonny_bodies, "Sonny signed out on his device")
 
+    # A brand-new device: typing an existing name never makes a second account.
+    phone = browser.new_context(viewport={"width": 390, "height": 844}).new_page()
+    phone.goto(BASE + "/signup"); phone.fill("#su-name", "  sonny "); phone.fill("#su-pin", "9999")
+    phone.get_by_role("button", name="Start my wishlist").click()
+    expect(phone.get_by_test_id("name-taken")).to_contain_text("already has a list")
+    expect(phone.get_by_text("That PIN isn’t right. 4 tries left", exact=False)).to_be_visible()
+    shot(phone, "v3-pin-taken")
+    phone.fill("#su-pin", PINS["Sonny"]); phone.get_by_role("button", name="Get back into my list").click()
+    expect(phone.locator(".family-title")).to_be_visible()
+    phone.goto(BASE + "/my-list")
+    expect(phone.get_by_role("heading", name="Sonny’s Christmas Wishlist")).to_be_visible()
+    expect(card(phone, "Aurora ANC Headphones")).to_have_count(1)      # the same list, not a new empty one
+    phone.context.close()
+
     # ---------- 6. Mom's own list is secret from her too ----------
-    sonny.goto(BASE + "/login"); sonny.fill("#li-email", email("Sonny")); sonny.fill("#li-pass", PW)
-    sonny.get_by_role("button", name="Log in").click()
+    # ---------- 6. Mom's own list is secret from her too ----------
+    sonny.goto(BASE + "/login"); sonny.fill("#li-name", "Sonny"); sonny.fill("#li-pin", "0000")
+    sonny.get_by_role("button", name="Log in", exact=True).click()
+    expect(sonny.get_by_text("That PIN isn’t right.", exact=False)).to_be_visible()
+    sonny.fill("#li-pin", PINS["Sonny"]); sonny.get_by_role("button", name="Log in", exact=True).click()
     expect(sonny.locator(".family-title")).to_be_visible()
     mom_link = BASE + sonny.get_by_test_id("member-card").filter(has_text="Mom").get_by_role("link", name="View wishlist").get_attribute("href")
     sonny.goto(mom_link)
@@ -429,14 +452,19 @@ with sync_playwright() as p:
     for url, body in mom_bodies:
         assert "claimer_name" not in body and "claimed_at" not in body, url
 
-    # ---------- 7. Forgot password ----------
+    # ---------- 7. Email accounts still work: log in with email, forgot password ----------
+    # (Accounts saved with an email before PINs existed.) Made directly with the sign-in service.
+    req = urllib.request.Request(os.environ.get("SUPABASE_URL", "http://localhost:54321") + "/auth/v1/signup", method="POST",
+        data=json.dumps({"email": email("Uncle"), "password": PW, "data": {"display_name": "Uncle"}}).encode(),
+        headers={"content-type": "application/json", "apikey": os.environ["NEXT_PUBLIC_SUPABASE_ANON_KEY"]})
+    urllib.request.urlopen(req).read()
+    uncle = browser.new_context().new_page()
     before = set(glob.glob(f"{MAIL_DIR}/*"))
-    save_account(dad, "Dad")
-    dad.get_by_role("button", name="Log out").click()
-    dad.goto(BASE + "/login"); dad.get_by_role("link", name="Forgot password?").click()
-    dad.fill("#fp-email", email("Dad"))
-    dad.get_by_role("button", name="Send reset link").click()
-    expect(dad.get_by_text("a reset link is on its way")).to_be_visible()
+    uncle.goto(BASE + "/login"); uncle.get_by_role("button", name="Saved your account with an email? Log in with email").click()
+    uncle.get_by_role("link", name="Forgot password?").click()
+    uncle.fill("#fp-email", email("Uncle"))
+    uncle.get_by_role("button", name="Send reset link").click()
+    expect(uncle.get_by_text("a reset link is on its way")).to_be_visible()
     for _ in range(40):
         new = set(glob.glob(f"{MAIL_DIR}/*")) - before
         if new: break
@@ -444,16 +472,18 @@ with sync_playwright() as p:
     assert new, "no reset email captured"
     raw = quopri.decodestring(open(new.pop(), "rb").read()).decode("utf-8", "ignore")
     reset = re.search(r'href="([^"]+/verify\?[^"]+)"', raw).group(1).replace("&amp;", "&")
-    dad.goto(reset)
-    expect(dad).to_have_url(re.compile("/reset-password"))
-    dad.fill("#rp-pass", "new-password-77"); dad.fill("#rp-confirm", "new-password-77")
-    dad.get_by_role("button", name="Save new password").click()
-    expect(dad).to_have_url(re.compile("/login\\?reset=1"))
-    dad.fill("#li-email", email("Dad")); dad.fill("#li-pass", PW)
-    dad.get_by_role("button", name="Log in").click()
-    expect(dad.get_by_text("That email and password don’t match.")).to_be_visible()
-    dad.fill("#li-pass", "new-password-77"); dad.get_by_role("button", name="Log in").click()
-    expect(dad.locator(".family-title")).to_contain_text("The Christmas Crew")
+    uncle.goto(reset)
+    expect(uncle).to_have_url(re.compile("/reset-password"))
+    uncle.fill("#rp-pass", "new-password-77"); uncle.fill("#rp-confirm", "new-password-77")
+    uncle.get_by_role("button", name="Save new password").click()
+    expect(uncle).to_have_url(re.compile("/login\\?reset=1"))
+    uncle.fill("#li-email", email("Uncle")); uncle.fill("#li-pass", PW)
+    uncle.get_by_role("button", name="Log in", exact=True).click()
+    expect(uncle.get_by_text("That email and password don’t match.")).to_be_visible()
+    uncle.fill("#li-pass", "new-password-77"); uncle.get_by_role("button", name="Log in", exact=True).click()
+    expect(uncle.locator(".sitebar .avatar-link")).to_be_visible()
+    uncle.context.close()
+    dad.goto(BASE + "/")
 
     # ---------- 8. Leave family ----------
     dad.get_by_role("button", name="Leave The Christmas Crew").click()

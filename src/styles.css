@@ -596,3 +596,11 @@ img { max-width: 100%; }
 .add-pic-btn:hover { background: #fff; }
 .add-pic-btn:focus-visible { outline: 3px solid var(--gold); outline-offset: 2px; }
 .card.is-claimed .add-pic-btn, .card.is-purchased .add-pic-btn { display: none; }
+
+/* ---------- PIN ---------- */
+.pin-row { display: flex; gap: 8px; align-items: center; }
+.pin-input { flex: 1; min-width: 0; font-size: 22px !important; letter-spacing: 0.35em; font-variant-numeric: tabular-nums; }
+.pin-welcome { display: grid; gap: 4px; padding: 12px 14px; border-radius: 14px; background: var(--gold-soft); }
+.pin-welcome strong { font-size: 16px; }
+.linkish-row { display: flex; justify-content: center; }
+.panel-row-head { display: grid; gap: 6px; margin-bottom: 14px; }

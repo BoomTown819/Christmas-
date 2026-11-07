@@ -435,3 +435,52 @@ describe('uploaded item pictures', () => {
     await sonny.db.from('wishlist_items').delete().eq('name', 'Pic test');
   });
 });
+
+describe('name + PIN sign-in', () => {
+  const pinName = `Pinny ${run}`;
+  let pinUser: { db: SupabaseClient; id: string };
+  beforeAll(async () => {
+    const db = createClient(URL, ANON, opts);
+    const { data } = await db.auth.signInAnonymously({ options: { data: { display_name: pinName } } });
+    pinUser = { db, id: data.user!.id };
+    expect((await db.rpc('set_account_pin', { p_pin: '7391' })).data).toEqual({ ok: true });
+  });
+
+  it('nobody can read or change the PIN table, or set a PIN while signed out', async () => {
+    for (const db of [guest(), sonny.db, pinUser.db]) {
+      expect((await db.from('account_pins').select('*')).error).not.toBeNull();
+      expect((await db.from('account_pins').update({ failed: 0 }).eq('user_id', pinUser.id).select()).error).not.toBeNull();
+    }
+    expect((await guest().rpc('set_account_pin', { p_pin: '1234' })).error).not.toBeNull();
+    expect((await guest().rpc('my_pin_status')).error).not.toBeNull();
+  });
+
+  it('a name with a PIN can\'t be taken by anyone else', async () => {
+    const db = createClient(URL, ANON, opts);
+    await db.auth.signInAnonymously({ options: { data: { display_name: pinName.toUpperCase() } } });
+    expect((await db.rpc('set_account_pin', { p_pin: '1111' })).data).toEqual({ ok: false, reason: 'name_taken' });
+    // and renaming yourself onto it while you have a PIN is refused
+    const third = createClient(URL, ANON, opts);
+    const { data: t } = await third.auth.signInAnonymously({ options: { data: { display_name: `Third ${run}` } } });
+    expect((await third.rpc('set_account_pin', { p_pin: '2222' })).data).toEqual({ ok: true });
+    expect((await third.from('profiles').update({ display_name: pinName }).eq('id', t.user!.id)).error?.message).toMatch(/name_taken/);
+  });
+
+  it('the right PIN signs into the same account; wrong PINs lock the name', async () => {
+    const other = createClient(URL, ANON, opts);
+    const r = (await other.rpc('pin_login', { p_name: ` ${pinName.toLowerCase()} `, p_pin: '7391' })).data;
+    expect(r.ok).toBe(true);
+    const { data } = await other.auth.signInWithPassword({ email: r.email, password: r.password });
+    expect(data.user!.id).toBe(pinUser.id);
+    for (let i = 4; i >= 1; i--) expect((await guest().rpc('pin_login', { p_name: pinName, p_pin: '0000' })).data).toEqual({ ok: false, reason: 'wrong_pin', tries_left: i });
+    expect((await guest().rpc('pin_login', { p_name: pinName, p_pin: '0000' })).data).toMatchObject({ ok: false, reason: 'locked' });
+    expect((await guest().rpc('pin_login', { p_name: pinName, p_pin: '7391' })).data).toMatchObject({ ok: false, reason: 'locked' });
+  });
+
+  it('never hands out a password for an account saved with a real email', async () => {
+    const emailUser = await signUp(`Mailer${run}`);          // signs up with an email and password
+    expect((await emailUser.db.rpc('set_account_pin', { p_pin: '2222' })).data).toEqual({ ok: true });
+    const { data: mine } = await guest().rpc('pin_login', { p_name: `Mailer${run}`, p_pin: '2222' });
+    expect(mine).toEqual({ ok: false, reason: 'use_email' });
+  });
+});

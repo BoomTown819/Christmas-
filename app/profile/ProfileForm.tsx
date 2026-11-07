@@ -4,6 +4,7 @@ import { useState, type FormEvent } from 'react';
 import { AvatarPicker } from '@/components/auth/AvatarPicker';
 import { supabaseBrowser } from '@/lib/supabase/client';
 import type { Profile } from '@/types';
+import { isPinEmail } from '@/lib/pin';
 
 export function ProfileForm({ profile, email }: { profile: Profile; email: string }) {
   const router = useRouter();
@@ -18,7 +19,7 @@ export function ProfileForm({ profile, email }: { profile: Profile; email: strin
     setBusy(true);
     const { error } = await supabaseBrowser().from('profiles').update({ display_name: name.trim(), avatar, avatar_color: color }).eq('id', profile.id);
     setBusy(false);
-    setMsg(error ? 'Couldn’t save. Try again.' : 'Saved');
+    setMsg(error ? (/name_taken/.test(error.message) ? 'Someone else already signs in with that name. Add a last name or nickname.' : 'Couldn’t save. Try again.') : 'Saved');
     if (!error) router.refresh();
   };
   return (
@@ -27,7 +28,7 @@ export function ProfileForm({ profile, email }: { profile: Profile; email: strin
         <input id="pf-name" value={name} maxLength={40} onChange={(e) => { setName(e.target.value); setMsg(null); }} /></div>
       <div className="field"><span className="label">Avatar</span>
         <AvatarPicker avatar={avatar} color={color} onChange={(a, c) => { setAvatar(a); setColor(c); setMsg(null); }} /></div>
-      {email && <div className="field"><span className="label">Email</span><p className="muted">{email} · only you can see this</p></div>}
+      {email && !isPinEmail(email) && <div className="field"><span className="label">Email</span><p className="muted">{email} · only you can see this</p></div>}
       <div className="panel-actions">
         <button type="submit" className="btn btn-primary" disabled={busy}>{busy ? 'Saving…' : 'Save profile'}</button>
         {msg && <span className="muted" role="status">{msg}</span>}

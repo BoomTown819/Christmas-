@@ -6,7 +6,7 @@ export const metadata: Metadata = { title: 'Sign up' };
 
 export default function SignupPage({ searchParams }: { searchParams: { next?: string } }) {
   return (
-    <AuthShell title="Make your wishlist" sub="Just your name and an avatar. Your own list, your own link, and a family dashboard to see everyone’s.">
+    <AuthShell title="Make your wishlist" sub="Just your name and a PIN. Your own list, your own link, and a family dashboard to see everyone’s.">
       <SignupForm next={searchParams.next} />
     </AuthShell>
   );

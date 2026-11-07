@@ -15,7 +15,7 @@ Built with Next.js 14 (App Router), React, TypeScript and Supabase (Auth, Postgr
 3. Open **Authentication → URL Configuration**:
    - **Site URL**: your site's address (for example `https://our-christmas.vercel.app`, or `http://localhost:3000` while testing).
    - **Redirect URLs**: add `https://YOUR-SITE/auth/callback` (and `http://localhost:3000/auth/callback`).
-4. **Required: Authentication → Sign In / Providers → turn on “Allow anonymous sign-ins”.** People sign up with just their name and an avatar, no email or password. Their account lives on that device until they add an email on their profile, which lets them log in anywhere.
+4. **Required: Authentication → Sign In / Providers → turn on “Allow anonymous sign-ins”.** People sign up with just their name, a 4 to 6 digit PIN and an avatar, no email. On any other device they type the same name and PIN to get back into the same account. Signing up with a name that's already taken asks for that name's PIN instead of making a second account. Names with a PIN are unique; PINs are stored only as bcrypt hashes, and 5 wrong PINs lock that name for 15 minutes (doubling each time, up to a day).
 5. Optional: **Authentication → Providers → Email**. "Confirm email" is on by default, so new users click a link before they can log in. Turn it off if you'd rather skip that step for family.
 6. Optional but recommended for real emails: **Project Settings → Authentication → SMTP**. Supabase's built-in sender is rate-limited to a few emails per hour.
 
