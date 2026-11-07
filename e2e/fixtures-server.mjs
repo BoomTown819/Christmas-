@@ -37,7 +37,19 @@ http.createServer((req, res) => {
     });
     return;
   }
-  if (req.url === '/product') { res.setHeader('content-type', 'text/html'); return res.end(product); }
+  // Stand-in for the browser-based link preview service (Microlink's response shape).
+  if (req.url.startsWith('/microlink')) {
+    const target = new URL(req.url, 'http://x').searchParams.get('url') || '';
+    res.setHeader('content-type', 'application/json');
+    if (target.endsWith('/jsonly')) {
+      return res.end(JSON.stringify({ status: 'success', data: { title: 'Frosty Snow Globe | Tiny Shop', description: 'A hand-blown glass snow globe with a tiny village inside.', image: { url: 'http://127.0.0.1:9911/globe.svg' }, publisher: 'Tiny Shop' } }));
+    }
+    return res.end(JSON.stringify({ status: 'fail', data: {} }));
+  }
+  if (req.url === '/jsonly') { res.setHeader('content-type', 'text/html'); return res.end('<html><head><title>Tiny Shop</title></head><body><div id="root"></div><script src="/app.js"></script></body></html>'); }
+  if (req.url === '/captcha') { res.setHeader('content-type', 'text/html'); return res.end('<html><head><title>Robot Check</title></head><body><form action="/errors/validateCaptcha"><input name="field-keywords"></form></body></html>'); }
+  if (req.url === '/globe.svg') { res.setHeader('content-type', 'image/svg+xml'); return res.end(svg.replace('#333', '#2a6')); }
+  if (req.url === '/product') { res.setHeader('content-type', 'text/html'); return setTimeout(() => res.end(product), 700); }
   if (req.url === '/img.svg') { res.setHeader('content-type', 'image/svg+xml'); return res.end(svg); }
   if (req.url === '/blocked') { res.statusCode = 403; return res.end('Forbidden'); }
   if (req.url === '/empty') { res.setHeader('content-type', 'text/html'); return res.end('<html><head><title>Loading</title></head><body><div id="app"></div></body></html>'); }

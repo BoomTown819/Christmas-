@@ -193,3 +193,17 @@
   .brand-text { display: none; }
   .nav a, .nav button.navlink { padding: 8px 9px; font-size: 13px; }
 }
+
+/* ---------- back button (lives in the top bar so the lights never cover it) ---------- */
+.sitebar-left { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.back-btn {
+  display: inline-flex; align-items: center; gap: 6px; min-height: 38px; padding: 7px 14px;
+  border-radius: 999px; border: 1px solid rgb(255 255 255 / 0.28); background: rgb(255 255 255 / 0.1);
+  color: var(--hero-ink); font: inherit; font-weight: 700; font-size: 15px; cursor: pointer; white-space: nowrap;
+}
+.back-btn:hover { background: rgb(255 255 255 / 0.2); }
+.back-btn:focus-visible { outline: 3px solid var(--gold, #e0b23c); outline-offset: 2px; }
+@media (max-width: 560px) { .sitebar-left:has(.back-btn) .brand-text { display: none; } }
+
+/* big "go to my list" at the bottom of the character page */
+.btn-go-list { display: flex; width: 100%; justify-content: center; margin-top: 22px; min-height: 60px; font-size: 19px; letter-spacing: 0.03em; }

@@ -406,3 +406,32 @@ describe('8-bit characters and photos', () => {
     expect(forge.error).not.toBeNull();
   });
 });
+
+describe('uploaded item pictures', () => {
+  const tiny = Buffer.from('ffd8ffe000104a46494600', 'hex').toString('base64');
+  it('only signed-in people can save pictures, and nobody can list or read the table', async () => {
+    expect((await guest().rpc('save_item_image', { p_mime: 'image/jpeg', p_data: tiny })).error).not.toBeNull();
+    const { data: tok, error } = await sonny.db.rpc('save_item_image', { p_mime: 'image/jpeg', p_data: tiny });
+    expect(error).toBeNull();
+    expect(tok).toMatch(/^[A-Za-z0-9]{24}$/);
+    for (const db of [sonny.db, mom.db, guest()]) {
+      const r = await db.from('item_images').select('*');
+      expect(r.data ?? []).toEqual([]);
+    }
+    expect((await mom.db.from('item_images').delete().eq('token', tok).select()).data ?? []).toEqual([]);
+    // Anyone with the token (like anyone with the list link) can see the picture; a guessed short token can't.
+    expect((await guest().rpc('get_item_image', { p_token: tok })).data).toEqual([{ mime: 'image/jpeg', data: tiny }]);
+    expect((await guest().rpc('get_item_image', { p_token: 'abc' })).data).toEqual([]);
+    // Bad types and non-image text are refused.
+    expect((await sonny.db.rpc('save_item_image', { p_mime: 'text/html', p_data: tiny })).error).not.toBeNull();
+    expect((await sonny.db.rpc('save_item_image', { p_mime: 'image/png', p_data: '<script>' })).error).not.toBeNull();
+  });
+
+  it('item picture addresses must be web links or our own uploaded pictures', async () => {
+    const add = (image_url: string) => sonny.db.from('wishlist_items').insert({ wishlist_id: sonny.wishlistId, name: 'Pic test', url: 'https://example.com', price_cents: 100, rating: 1, image_url });
+    expect((await add('javascript:alert(1)')).error).not.toBeNull();
+    expect((await add('/api/describe')).error).not.toBeNull();
+    expect((await add('/api/item-image/AAAAAAAAAAAAAAAAAAAAAAAA')).error).toBeNull();
+    await sonny.db.from('wishlist_items').delete().eq('name', 'Pic test');
+  });
+});

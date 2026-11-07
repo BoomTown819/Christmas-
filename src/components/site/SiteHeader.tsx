@@ -3,6 +3,7 @@ import { getSessionUser } from '@/lib/supabase/server';
 import { AVATARS } from '@/lib/items';
 import { Avatar, ChristmasLights } from '../festive/Decorations';
 import { NavLinks } from './NavLinks';
+import { BackButton } from './BackButton';
 
 export async function SiteHeader() {
   const { db, user } = await getSessionUser();
@@ -12,7 +13,10 @@ export async function SiteHeader() {
   return (
     <header className="sitebar">
       <div className="sitebar-inner">
+        <div className="sitebar-left">
+        <BackButton />
         <Link href="/" className="brand"><span className="brand-mark">🎄</span><span className="brand-text">Our Christmas</span></Link>
+        </div>
         <nav className="nav" aria-label="Main">
           {user ? (
             <>

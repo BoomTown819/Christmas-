@@ -1,5 +1,7 @@
 import { lookup } from 'node:dns/promises';
+import dns from 'node:dns';
 import net from 'node:net';
+import { Agent, fetch as undiciFetch } from 'undici';
 
 const MAX_BYTES = 2_000_000;
 const TIMEOUT_MS = 9000;
@@ -24,6 +26,10 @@ export function parseProductUrl(raw: string): URL {
   }
   if (!url.hostname.includes('.') && !allowPrivate()) {
     throw new InvalidUrlError("That doesn't look like a public website address.");
+  }
+  if (url.username || url.password) throw new InvalidUrlError("Links with a username or password in them can't be read.");
+  if (url.port && !['80', '443'].includes(url.port) && !allowPrivate()) {
+    throw new InvalidUrlError('Only normal website links (no special ports) can be read.');
   }
   return url;
 }
@@ -59,6 +65,30 @@ async function assertPublicHost(url: URL) {
   }
 }
 
+/**
+ * Connections go through this agent, which checks the address it is *actually* connecting to.
+ * That closes the gap where a site's DNS answers "public" to the check above and "private" a
+ * moment later (DNS rebinding).
+ */
+const pinnedAgent = new Agent({
+  connect: {
+    lookup(hostname, options, cb) {
+      dns.lookup(hostname, { ...options, all: true }, (err, addrs) => {
+        if (err) return cb(err, '', 4);
+        const list = (Array.isArray(addrs) ? addrs : [addrs]) as dns.LookupAddress[];
+        if (!allowPrivate() && list.some((a) => isPrivateAddress(a.address))) {
+          return cb(new FetchBlockedError('That address points to a private network, so it was not read.'), '', 4);
+        }
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        if ((options as any)?.all) return (cb as any)(null, list);
+        return cb(null, list[0].address, list[0].family);
+      });
+    },
+  },
+  headersTimeout: TIMEOUT_MS,
+  bodyTimeout: TIMEOUT_MS,
+});
+
 /** Fetch a public web page as text with a timeout, size cap and re-validated redirects. */
 export async function fetchPage(start: URL): Promise<{ html: string; finalUrl: URL }> {
   let url = start;
@@ -66,11 +96,12 @@ export async function fetchPage(start: URL): Promise<{ html: string; finalUrl: U
     await assertPublicHost(url);
     const ctrl = new AbortController();
     const timer = setTimeout(() => ctrl.abort(), TIMEOUT_MS);
-    let res: Response;
+    let res: Awaited<ReturnType<typeof undiciFetch>>;
     try {
-      res = await fetch(url, {
+      res = await undiciFetch(url, {
         redirect: 'manual',
         signal: ctrl.signal,
+        dispatcher: pinnedAgent,
         headers: {
           // A normal browser-like request; many shops reject unknown clients.
           'User-Agent':
@@ -81,12 +112,19 @@ export async function fetchPage(start: URL): Promise<{ html: string; finalUrl: U
       });
     } catch (err) {
       clearTimeout(timer);
+      if (err instanceof FetchBlockedError) throw err;
+      const cause = (err as { cause?: unknown }).cause;
+      if (cause instanceof FetchBlockedError) throw cause;
       const aborted = (err as Error).name === 'AbortError';
       throw new FetchBlockedError(aborted ? 'The website took too long to respond.' : "The website couldn't be reached.");
     }
     if (res.status >= 300 && res.status < 400 && res.headers.get('location')) {
       clearTimeout(timer);
       url = new URL(res.headers.get('location')!, url);
+      if (url.protocol !== 'http:' && url.protocol !== 'https:') throw new FetchBlockedError('The website redirected somewhere that can’t be read.');
+      if (!allowPrivate() && ((url.port && !['80', '443'].includes(url.port)) || url.username || url.password)) {
+        throw new FetchBlockedError('The website redirected somewhere that can’t be read.');
+      }
       continue;
     }
     if (!res.ok) {
@@ -107,7 +145,7 @@ export async function fetchPage(start: URL): Promise<{ html: string; finalUrl: U
   throw new FetchBlockedError('The website redirected too many times.');
 }
 
-async function readCapped(res: Response, ctrl: AbortController): Promise<string> {
+async function readCapped(res: Awaited<ReturnType<typeof undiciFetch>>, ctrl: AbortController): Promise<string> {
   if (!res.body) return '';
   const reader = res.body.getReader();
   const chunks: Uint8Array[] = [];

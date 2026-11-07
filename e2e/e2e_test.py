@@ -1,7 +1,7 @@
 """Multi-user end-to-end test: several accounts and a guest in separate browsers.
 
 Needs: the local Supabase stack (stack/start.sh), e2e/fixtures-server.mjs, and the app running with
-ALLOW_PRIVATE_HOSTS=1 ANTHROPIC_API_KEY=test ANTHROPIC_BASE_URL=http://127.0.0.1:9911 on BASE.
+ALLOW_PRIVATE_HOSTS=1 METADATA_SERVICE_URL=http://127.0.0.1:9911/microlink ANTHROPIC_API_KEY=test ANTHROPIC_BASE_URL=http://127.0.0.1:9911 on BASE.
 """
 import glob, json, os, quopri, re, time
 from playwright.sync_api import sync_playwright, expect
@@ -150,7 +150,7 @@ with sync_playwright() as p:
     sonny.get_by_role("button", name="Animate: Dancing").click()
     expect(sonny.get_by_text("✨ AI animation")).to_be_visible(timeout=30000)
     shot(sonny, "v3-creator")
-    sonny.get_by_role("link", name="Save & see it on the dashboard").click()
+    sonny.get_by_role("link", name="See it on the dashboard").click()
     expect(sonny.get_by_test_id("welcome")).to_have_text("Welcome back, Sonny! 🎅")
     expect(sonny.locator(".welcome-row [data-testid=character]")).to_have_attribute("data-anim", "ai")
     sonny.goto(BASE + "/my-list")
@@ -161,17 +161,50 @@ with sync_playwright() as p:
 
     # AI description from the product page
     sonny.get_by_role("button", name="Add item").first.click()
-    sonny.fill("#f-url", f"{FX}/product")
-    sonny.locator("#f-price").focus()
+    expect(sonny.locator("#f-url")).to_be_focused()           # the link comes first
+    sonny.fill("#f-url", f"{FX}/product")                       # typing/pasting a link starts the lookup by itself
+    expect(sonny.get_by_text("Finding your Christmas present… 🎁")).to_be_visible(timeout=5000)
     expect(sonny.locator("#f-desc")).to_have_value(re.compile("adaptive noise cancellation"), timeout=15000)
     expect(sonny.locator("#f-name")).to_have_value("Aurora ANC Headphones")
-    sonny.get_by_role("button", name="Use $279.00 from the page").click()
+    expect(sonny.locator("#f-price")).to_have_value("279.00")    # price filled from the page
+    expect(sonny.locator(".image-thumb img")).to_have_attribute("src", f"{FX}/img.svg")
+    expect(sonny.get_by_text("Found it", exact=False)).to_be_visible()
+    shot(sonny, "v3-autofill-found")
+    sonny.fill("#f-name", "Aurora ANC Headphones")              # still editable
     click_star(sonny, "#f-rating", 4, False)
     sonny.fill("#f-reason", "Long flights home for the holidays.")
     sonny.fill("#f-note", PRIVATE_NOTE)
     sonny.get_by_role("button", name="Add to wishlist").click()
     expect(card(sonny, "Aurora ANC Headphones")).to_contain_text(PRIVATE_NOTE)
     expect(card(sonny, "Aurora ANC Headphones").locator(".ai-badge")).to_be_visible()
+
+    # A page that needs JavaScript: filled by the browser-based preview service. No price is ever guessed.
+    sonny.get_by_role("button", name="Add item").first.click()
+    sonny.fill("#f-url", f"{FX}/jsonly")
+    expect(sonny.locator("#f-name")).to_have_value("Frosty Snow Globe", timeout=15000)
+    expect(sonny.locator(".image-thumb img")).to_have_attribute("src", "http://127.0.0.1:9911/globe.svg")
+    expect(sonny.locator("#f-price")).to_have_value("")
+    expect(sonny.get_by_text("Couldn’t find a price on that page. Add it here.")).to_be_visible()
+    sonny.get_by_role("button", name="Cancel").click()
+    expect(sonny.locator(".modal")).to_have_count(0)
+
+    # A store that turns us away: friendly message, type it in, upload your own picture.
+    sonny.get_by_role("button", name="Add item").first.click()
+    sonny.fill("#f-url", f"{FX}/captcha")
+    expect(sonny.get_by_text("No luck reading that page")).to_be_visible(timeout=15000)
+    expect(sonny.locator("#f-name")).to_be_focused()
+    shot(sonny, "v3-autofill-failed")
+    sonny.fill("#f-name", "Snow Boots")
+    sonny.fill("#f-price", "89")
+    sonny.set_input_files("#f-image-file", "e2e/fixtures/still.png")
+    expect(sonny.locator(".image-thumb img")).to_have_attribute("src", re.compile(r"^/api/item-image/[A-Za-z0-9_-]{24,}$"), timeout=15000)
+    sonny.get_by_role("button", name="Add to wishlist").click()
+    boots_img = card(sonny, "Snow Boots").locator(".card-media img")
+    expect(boots_img).to_have_attribute("src", re.compile(r"^/api/item-image/"))
+    assert sonny.evaluate("(el) => el.complete && el.naturalWidth > 0", boots_img.element_handle()), "uploaded picture didn't load"
+    sonny.get_by_role("button", name="Delete Snow Boots").click()
+    card(sonny, "Snow Boots").get_by_role("button", name="Delete").click()
+    expect(card(sonny, "Snow Boots")).to_have_count(0)
 
     add_item(sonny, "Lego Titanic", "lego.com/titanic", "679.99", 3, True)        # 3.5
     add_item(sonny, "Wool Socks", "https://www.darntough.com/socks", "24", 1, False)  # 2

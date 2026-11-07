@@ -2,7 +2,7 @@
 import { memo, useState, type DragEvent, type ReactNode } from 'react';
 import { formatUSD } from '../lib/money';
 import { tierOf, TIER_LABELS, wantLabel } from '../lib/organize';
-import { hostOf } from '../lib/url';
+import { storeLabel } from '../lib/stores';
 import type { WishlistItem } from '../types';
 import { EditIcon, ExternalIcon, GiftPlaceholder, SparkIcon, TrashIcon } from './Icons';
 import { StarRating } from './StarRating';
@@ -43,7 +43,7 @@ export const ItemCard = memo(function ItemCard({ item, index, readOnly, highligh
   const [imgOk, setImgOk] = useState(true);
   const [confirming, setConfirming] = useState(false);
   const tier = tierOf(item.rating);
-  const host = hostOf(item.url);
+  const host = storeLabel(item.url);
 
   return (
     <article
@@ -73,7 +73,6 @@ export const ItemCard = memo(function ItemCard({ item, index, readOnly, highligh
       <div className="card-body">
         <div className="card-title-row">
           <h3 className="card-title">{item.name}</h3>
-          <p className="card-price">{formatUSD(item.priceCents)}</p>
         </div>
         {host && <p className="card-host">{host}</p>}
 
@@ -83,6 +82,7 @@ export const ItemCard = memo(function ItemCard({ item, index, readOnly, highligh
           ) : (
             <StarRating value={item.rating} size="sm" onChange={(v) => onRate(item.id, v)} label={`How badly I want ${item.name}`} />
           )}
+          <span className="card-price" data-testid="card-price">{formatUSD(item.priceCents)}</span>
           <span className="card-want">{item.rating.toFixed(1)} · {wantLabel(item.rating)}</span>
         </div>
 

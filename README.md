@@ -10,7 +10,7 @@ Built with Next.js 14 (App Router), React, TypeScript and Supabase (Auth, Postgr
 
 ### 1. Create a Supabase project
 1. Go to [supabase.com](https://supabase.com), create a free project, and wait for it to start.
-2. Open **SQL Editor**, paste everything from `supabase/migrations/20261105000000_family_wishlists.sql`, and click **Run**.
+2. Open **SQL Editor** and run each file in `supabase/migrations/` in order (oldest first).
    (Or with the Supabase CLI: `supabase link` then `supabase db push`.)
 3. Open **Authentication → URL Configuration**:
    - **Site URL**: your site's address (for example `https://our-christmas.vercel.app`, or `http://localhost:3000` while testing).
@@ -82,6 +82,12 @@ Privacy: photos live in `character_photos`, readable only by their owner. Charac
 
 ## Your wishlist
 Half-star "how badly I want it" ratings (0.5 to 5), AI one-sentence descriptions from the product page, prices, totals, "why I want it", private notes, images, edit/delete with undo, drag (or arrow buttons) to rearrange, sorting and rating filters, "Surprise me", CSV export, and a **SHARE MY CHRISTMAS LIST 🎁** button.
+
+**Paste a link, get the gift.** Paste a product link into **Add item** and the server reads the page, then fills in the name, picture, description, price and store. You can change anything before saving. It reads, in order: Schema.org Product JSON-LD (including `@graph`, ProductGroup variants and price specifications), microdata, Open Graph, Twitter Card and the standard title/description tags, then a few well-known store layouts (Amazon, Best Buy, Target, Walmart). Nothing is guessed: a price is only used when it's in US dollars and comes from the page's structured data or a visible "$" price, otherwise the price box stays empty. Bot-check pages ("Robot Check", captchas) are recognised and never used as product data.
+
+When a page needs JavaScript or turns the server away, the app asks a link-preview service that renders pages in a real browser ([Microlink](https://microlink.io), free tier, no key needed) for the name, picture and description only. Turn it off with `METADATA_SERVICE=off`, or add `MICROLINK_API_KEY` for higher limits. If nothing works, the form says so kindly and you type it in. When a store has no usable picture, **Upload a picture** shrinks it in the browser, re-encodes it on the server, and stores it in `item_images` (served by an unguessable link, like the list itself).
+
+Safety: only http/https links on normal ports, no usernames or passwords in links, every redirect re-checked, the network address is checked at the moment of connecting (so DNS tricks can't reach private networks), a 9 second timeout, a 2 MB cap, and 20 lookups per person per minute. Successful lookups are cached for 12 hours.
 
 AI descriptions: the server fetches the product page (public addresses only, 8 second timeout, 2 MB cap) and asks Claude for one sentence using only the text it actually read. If a site blocks the request or has no readable product text, the form says so and you write it yourself. Nothing is made up.
 

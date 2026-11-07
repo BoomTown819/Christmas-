@@ -20,7 +20,7 @@ export function Modal({ open, onClose, title, children, footer, size = 'md' }: P
     if (!open) return;
     lastFocus.current = document.activeElement as HTMLElement;
     const t = setTimeout(() => {
-      const first = panel.current?.querySelector<HTMLElement>('[data-autofocus], input, textarea, select, button');
+      const first = panel.current?.querySelector<HTMLElement>('[data-autofocus]') ?? panel.current?.querySelector<HTMLElement>('input, textarea, select, button');
       first?.focus();
     }, 30);
     const onKey = (e: KeyboardEvent) => {

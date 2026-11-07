@@ -1,9 +1,10 @@
 'use client';
 import { useEffect, useRef, useState, type FormEvent } from 'react';
-import type { DescribeResponse } from '../lib/server/types';
-import { describeProduct } from '../lib/describeClient';
+import type { ProductResponse } from '../lib/server/types';
+import { lookupProduct, uploadItemImage } from '../lib/productClient';
 import { centsToInput, formatUSD, parsePrice } from '../lib/money';
 import { parseUrl } from '../lib/url';
+import { storeLabel } from '../lib/stores';
 import type { DescriptionSource, ItemDraft, WishlistItem } from '../types';
 import { RefreshIcon, SparkIcon } from './Icons';
 import { Modal } from './Modal';
@@ -18,8 +19,10 @@ interface Props {
 
 type Lookup =
   | { state: 'idle' }
-  | { state: 'loading' }
-  | { state: 'done'; result: DescribeResponse; forUrl: string };
+  | { state: 'loading'; forUrl: string }
+  | { state: 'done'; result: ProductResponse; forUrl: string };
+
+type Field = 'name' | 'price' | 'image' | 'desc';
 
 export function ItemForm({ open, editing, onClose, onSave }: Props) {
   const [name, setName] = useState('');
@@ -32,11 +35,18 @@ export function ItemForm({ open, editing, onClose, onSave }: Props) {
   const [privateNote, setPrivateNote] = useState('');
   const [imageUrl, setImageUrl] = useState('');
   const [imgBroken, setImgBroken] = useState(false);
+  const [showImageLink, setShowImageLink] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
   const [lookup, setLookup] = useState<Lookup>({ state: 'idle' });
+  const [flash, setFlash] = useState<Partial<Record<Field, boolean>>>({});
   const [touched, setTouched] = useState<Record<string, boolean>>({});
   const [submitted, setSubmitted] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
-  const descTouchedRef = useRef(false);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const fileRef = useRef<HTMLInputElement>(null);
+  /** Fields the person typed into themselves. Autofill never overwrites these. */
+  const mine = useRef<Partial<Record<Field, boolean>>>({});
 
   useEffect(() => {
     if (!open) return;
@@ -50,43 +60,82 @@ export function ItemForm({ open, editing, onClose, onSave }: Props) {
     setPrivateNote(editing?.privateNote ?? '');
     setImageUrl(editing?.imageUrl ?? '');
     setImgBroken(false);
+    setShowImageLink(false);
+    setUploading(false);
+    setUploadError(null);
     setLookup({ state: 'idle' });
+    setFlash({});
     setTouched({});
     setSubmitted(false);
-    descTouchedRef.current = Boolean(editing?.description);
-    return () => abortRef.current?.abort();
+    mine.current = editing
+      ? { name: true, price: true, image: Boolean(editing.imageUrl), desc: Boolean(editing.description) }
+      : {};
+    return () => { abortRef.current?.abort(); if (debounceRef.current) clearTimeout(debounceRef.current); };
   }, [open, editing]);
 
   const urlCheck = parseUrl(url);
   const priceCheck = parsePrice(price);
   const nameError = !name.trim() ? 'Give the item a name.' : name.length > 200 ? 'Keep the name under 200 characters.' : null;
   const show = (f: string) => submitted || touched[f];
+  const loading = lookup.state === 'loading';
 
-  async function runLookup(force: boolean) {
-    const u = parseUrl(url);
+  async function runLookup(rawUrl: string, force = false) {
+    const u = parseUrl(rawUrl);
     if (!u.ok) return;
-    if (!force && lookup.state === 'done' && lookup.forUrl === u.url) return;
+    if (!force && lookup.state !== 'idle' && lookup.forUrl === u.url) return;
+    if (debounceRef.current) clearTimeout(debounceRef.current);
     abortRef.current?.abort();
     const ctrl = new AbortController();
     abortRef.current = ctrl;
-    setLookup({ state: 'loading' });
+    setLookup({ state: 'loading', forUrl: u.url });
     try {
-      const result = await describeProduct(u.url, name, ctrl.signal);
+      const result = await lookupProduct(u.url, mine.current.name ? name : '', ctrl.signal);
       if (ctrl.signal.aborted) return;
       setLookup({ state: 'done', result, forUrl: u.url });
-      if (result.status === 'ok' && (force || !descTouchedRef.current)) {
-        setDescription(result.description);
-        setDescSource(result.source);
-        descTouchedRef.current = false;
+      const p = result.product;
+      const filled: Partial<Record<Field, boolean>> = {};
+      if (p.name && (force || !mine.current.name)) { setName(p.name.slice(0, 200)); filled.name = true; }
+      if (p.priceCents != null && (!mine.current.price)) { setPrice(centsToInput(p.priceCents)); filled.price = true; }
+      if (p.imageUrl && (force || !mine.current.image)) { setImageUrl(p.imageUrl); setImgBroken(false); filled.image = true; }
+      if (p.description && (force || !mine.current.desc)) {
+        setDescription(p.description.slice(0, 400));
+        setDescSource(p.descriptionSource ?? 'page');
+        filled.desc = true;
       }
-      if ((result.status === 'ok' || result.status === 'no_content')) {
-        if (result.imageUrl && (force || !imageUrl)) { setImageUrl(result.imageUrl); setImgBroken(false); }
-        if (!name.trim() && result.title) setName(result.title.slice(0, 120));
-      }
+      setFlash(filled);
+      setTimeout(() => setFlash({}), 1600);
+      if (result.status !== 'found' && !name.trim()) setTimeout(() => document.getElementById('f-name')?.focus(), 50);
     } catch {
       /* aborted */
     }
   }
+
+  const onUrlChange = (value: string) => {
+    setUrl(value);
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    const u = parseUrl(value);
+    // Typed or pasted a full-looking link: look it up after a short pause.
+    if (u.ok && (/\.[a-z]{2,}$/i.test(u.host) || /^\d{1,3}(\.\d{1,3}){3}$/.test(u.host)) && value.length > 10) {
+      debounceRef.current = setTimeout(() => runLookup(value), 700);
+    }
+  };
+
+  const pickFile = async (file: File | undefined) => {
+    if (!file) return;
+    setUploadError(null);
+    setUploading(true);
+    try {
+      const saved = await uploadItemImage(file);
+      setImageUrl(saved);
+      setImgBroken(false);
+      mine.current.image = true;
+    } catch (e) {
+      setUploadError((e as Error).message);
+    } finally {
+      setUploading(false);
+      if (fileRef.current) fileRef.current.value = '';
+    }
+  };
 
   const submit = (e: FormEvent) => {
     e.preventDefault();
@@ -110,8 +159,12 @@ export function ItemForm({ open, editing, onClose, onSave }: Props) {
   };
 
   const result = lookup.state === 'done' ? lookup.result : null;
-  const detected = result && 'detectedPriceCents' in result ? result.detectedPriceCents : undefined;
-  const priceDiffers = detected != null && (!priceCheck.ok || priceCheck.cents !== detected);
+  const found = result?.status === 'found' ? result.product : null;
+  const detected = found?.priceCents;
+  const priceDiffers = detected != null && mine.current.price && (!priceCheck.ok || priceCheck.cents !== detected);
+  const store = found?.store ?? (urlCheck.ok ? storeLabel(urlCheck.url) : '');
+  const hasImage = Boolean(imageUrl) && !imgBroken;
+  const glow = (f: Field) => (flash[f] ? ' just-filled' : '');
 
   return (
     <Modal
@@ -121,37 +174,74 @@ export function ItemForm({ open, editing, onClose, onSave }: Props) {
       footer={
         <>
           <button type="button" className="btn btn-ghost" onClick={onClose}>Cancel</button>
-          <button type="submit" form="item-form" className="btn btn-primary">{editing ? 'Save changes' : 'Add to wishlist'}</button>
+          <button type="submit" form="item-form" className="btn btn-primary" disabled={uploading}>{editing ? 'Save changes' : 'Add to wishlist'}</button>
         </>
       }
     >
       <form id="item-form" className="form" onSubmit={submit} noValidate>
-        <div className={`field ${show('name') && nameError ? 'has-error' : ''}`}>
+        <div className={`field field-link ${show('url') && !urlCheck.ok ? 'has-error' : ''}`}>
+          <label htmlFor="f-url">Product link</label>
+          <input id="f-url" type="url" inputMode="url" value={url} autoComplete="off" {...(!editing ? { 'data-autofocus': true } : {})}
+            placeholder="Paste a link from Amazon, Target, any store…"
+            onChange={(e) => onUrlChange(e.target.value)}
+            onPaste={(e) => {
+              const pasted = e.clipboardData.getData('text').trim();
+              if (parseUrl(pasted).ok) { e.preventDefault(); setUrl(pasted); runLookup(pasted); }
+            }}
+            onBlur={() => { setTouched((t) => ({ ...t, url: true })); if (url.trim() && url.trim() !== editing?.url) runLookup(url); }} />
+          {show('url') && !urlCheck.ok && <p className="field-error">{urlCheck.error}</p>}
+          {lookup.state === 'idle' && !editing && (
+            <p className="field-hint">Paste a link and we’ll fill in the name, picture, description and price for you. ✨</p>
+          )}
+          <FinderStatus lookup={lookup} store={store} hasPrice={detected != null} hasImage={hasImage}
+            onRetry={() => runLookup(url, true)} />
+        </div>
+
+        <div className={`field ${show('name') && nameError ? 'has-error' : ''}${glow('name')}`}>
           <label htmlFor="f-name">Item name</label>
-          <input id="f-name" data-autofocus value={name} maxLength={200} placeholder="e.g. AirPods Pro" autoComplete="off"
-            onChange={(e) => setName(e.target.value)} onBlur={() => setTouched((t) => ({ ...t, name: true }))} />
+          <input id="f-name" value={name} maxLength={200} placeholder={loading ? 'Looking for the name…' : 'e.g. AirPods Pro'} autoComplete="off"
+            className={loading && !name ? 'is-shimmer' : ''}
+            onChange={(e) => { setName(e.target.value); mine.current.name = true; }}
+            onBlur={() => setTouched((t) => ({ ...t, name: true }))} />
           {show('name') && nameError && <p className="field-error">{nameError}</p>}
         </div>
 
-        <div className={`field ${show('url') && !urlCheck.ok ? 'has-error' : ''}`}>
-          <label htmlFor="f-url">Website link</label>
-          <input id="f-url" type="url" inputMode="url" value={url} placeholder="Paste a link from any store" autoComplete="off"
-            onChange={(e) => setUrl(e.target.value)}
-            onPaste={(e) => {
-              const pasted = e.clipboardData.getData('text');
-              if (parseUrl(pasted).ok) setTimeout(() => document.getElementById('f-url')?.blur(), 0);
-            }}
-            onBlur={() => { setTouched((t) => ({ ...t, url: true })); runLookup(false); }} />
-          {show('url') && !urlCheck.ok && <p className="field-error">{urlCheck.error}</p>}
+        <div className={`field field-image${glow('image')}`}>
+          <span className="label">Picture</span>
+          <div className="image-row">
+            <div className={`image-thumb image-thumb-lg${loading && !hasImage ? ' is-shimmer' : ''}`}>
+              {hasImage
+                ? <img src={imageUrl} alt={name ? `Picture of ${name}` : 'Item picture'} referrerPolicy="no-referrer" onError={() => setImgBroken(true)} />
+                : <span>{loading ? '🎁' : uploading ? 'Uploading…' : 'No picture yet'}</span>}
+            </div>
+            <div className="image-actions">
+              <button type="button" className="btn btn-soft btn-sm" disabled={uploading} onClick={() => fileRef.current?.click()}>
+                {uploading ? 'Uploading…' : hasImage ? '📷 Use my own picture' : '📷 Upload a picture'}
+              </button>
+              {hasImage && (
+                <button type="button" className="btn btn-ghost btn-sm" onClick={() => { setImageUrl(''); setImgBroken(false); mine.current.image = true; }}>Remove picture</button>
+              )}
+              <button type="button" className="linkish" aria-expanded={showImageLink} onClick={() => setShowImageLink((v) => !v)}>
+                {showImageLink ? 'Hide picture link' : 'Or paste a picture link'}
+              </button>
+              <input ref={fileRef} id="f-image-file" type="file" accept="image/*" hidden onChange={(e) => pickFile(e.target.files?.[0])} />
+            </div>
+          </div>
+          {imgBroken && imageUrl && <p className="field-note">That picture couldn’t be shown. Upload your own instead.</p>}
+          {uploadError && <p className="field-error">{uploadError}</p>}
+          {showImageLink && (
+            <input id="f-image" aria-label="Picture link" value={imageUrl.startsWith('/api/') ? '' : imageUrl} placeholder="https://…/photo.jpg" autoComplete="off"
+              onChange={(e) => { setImageUrl(e.target.value); setImgBroken(false); mine.current.image = true; }} />
+          )}
         </div>
 
         <div className="field-row">
-          <div className={`field field-price ${(submitted || (touched.price && price.trim() !== '')) && !priceCheck.ok ? 'has-error' : ''}`}>
+          <div className={`field field-price ${(submitted || (touched.price && price.trim() !== '')) && !priceCheck.ok ? 'has-error' : ''}${glow('price')}`}>
             <label htmlFor="f-price">Price</label>
-            <div className="input-affix">
+            <div className={`input-affix${loading && !price ? ' is-shimmer' : ''}`}>
               <span aria-hidden="true">$</span>
               <input id="f-price" inputMode="decimal" value={price} placeholder="0.00" autoComplete="off"
-                onChange={(e) => setPrice(e.target.value)}
+                onChange={(e) => { setPrice(e.target.value); mine.current.price = true; }}
                 onBlur={() => {
                   setTouched((t) => ({ ...t, price: true }));
                   const p = parsePrice(price);
@@ -159,6 +249,7 @@ export function ItemForm({ open, editing, onClose, onSave }: Props) {
                 }} />
             </div>
             {(submitted || (touched.price && price.trim() !== '')) && !priceCheck.ok && <p className="field-error">{priceCheck.error}</p>}
+            {found && detected == null && !price && <p className="field-note">Couldn’t find a price on that page. Add it here.</p>}
             {priceDiffers && (
               <button type="button" className="chip chip-gold" onMouseDown={(e) => e.preventDefault()} onClick={() => setPrice(centsToInput(detected!))}>
                 Use {formatUSD(detected!)} from the page
@@ -171,23 +262,22 @@ export function ItemForm({ open, editing, onClose, onSave }: Props) {
           </div>
         </div>
 
-        <div className="field">
+        <div className={`field${glow('desc')}`}>
           <div className="label-row">
             <label htmlFor="f-desc">Description</label>
-            <DescStatus lookup={lookup} source={descSource} />
+            <DescStatus loading={loading} source={descSource} />
           </div>
-          <div className={`ai-box ${lookup.state === 'loading' ? 'is-loading' : ''}`}>
+          <div className={`ai-box ${loading ? 'is-loading' : ''}`}>
             <textarea id="f-desc" rows={2} maxLength={400} value={description}
-              placeholder={lookup.state === 'loading' ? 'Reading the product page…' : 'One sentence about what it is. Paste a link above to generate one.'}
-              onChange={(e) => { setDescription(e.target.value); setDescSource('manual'); descTouchedRef.current = true; }} />
+              placeholder={loading ? 'Reading the product page…' : 'A sentence about what it is. Paste a link above to fill this in.'}
+              onChange={(e) => { setDescription(e.target.value); setDescSource('manual'); mine.current.desc = true; }} />
             <div className="ai-actions">
-              <button type="button" className="btn btn-soft btn-sm" disabled={!urlCheck.ok || lookup.state === 'loading'} onClick={() => runLookup(true)}>
+              <button type="button" className="btn btn-soft btn-sm" disabled={!urlCheck.ok || loading} onClick={() => runLookup(url, true)}>
                 {lookup.state === 'done' || description ? <RefreshIcon size={15} /> : <SparkIcon size={15} />}
-                {lookup.state === 'loading' ? 'Reading page…' : lookup.state === 'done' || description ? 'Regenerate' : 'Generate'}
+                {loading ? 'Reading page…' : lookup.state === 'done' || description ? 'Fill in again from the link' : 'Fill in from the link'}
               </button>
             </div>
           </div>
-          {result && result.status !== 'ok' && <p className="field-note">{result.message}</p>}
         </div>
 
         <div className="field">
@@ -201,27 +291,58 @@ export function ItemForm({ open, editing, onClose, onSave }: Props) {
           <textarea id="f-note" rows={2} maxLength={2000} value={privateNote} placeholder="Size, color, or a reminder to yourself"
             onChange={(e) => setPrivateNote(e.target.value)} />
         </div>
-
-        <div className="field field-image">
-          <label htmlFor="f-image">Image link <span className="optional">optional · filled from the page when possible</span></label>
-          <div className="image-row">
-            <div className="image-thumb">
-              {imageUrl && !imgBroken
-                ? <img src={imageUrl} alt="" referrerPolicy="no-referrer" onError={() => setImgBroken(true)} />
-                : <span>No image</span>}
-            </div>
-            <input id="f-image" value={imageUrl} placeholder="https://…/photo.jpg" autoComplete="off"
-              onChange={(e) => { setImageUrl(e.target.value); setImgBroken(false); }} />
-          </div>
-        </div>
       </form>
     </Modal>
   );
 }
 
-function DescStatus({ lookup, source }: { lookup: Lookup; source: DescriptionSource }) {
-  if (lookup.state === 'loading') return <span className="desc-status is-loading"><span className="dot-pulse" /> Reading page</span>;
-  if (lookup.state === 'done' && lookup.result.status !== 'ok') return <span className="desc-status is-warn">Write it yourself</span>;
+function FinderStatus({ lookup, store, hasPrice, hasImage, onRetry }: {
+  lookup: Lookup; store: string; hasPrice: boolean; hasImage: boolean; onRetry: () => void;
+}) {
+  if (lookup.state === 'loading') {
+    return (
+      <div className="finder is-loading" role="status" aria-live="polite">
+        <span className="finder-gift" aria-hidden="true">🎁</span>
+        <span className="finder-text">
+          <strong>Finding your Christmas present… 🎁</strong>
+          <span className="finder-sub">{store ? `Peeking at ${store}` : 'Reading the page'}<span className="finder-dots" aria-hidden="true"><i /><i /><i /></span></span>
+        </span>
+      </div>
+    );
+  }
+  if (lookup.state !== 'done') return null;
+  const r = lookup.result;
+  if (r.status === 'found') {
+    const missing = [!r.product.name && 'name', !hasImage && 'picture', !hasPrice && 'price'].filter(Boolean) as string[];
+    return (
+      <div className="finder is-found" role="status" aria-live="polite">
+        <span className="finder-gift" aria-hidden="true">✨</span>
+        <span className="finder-text">
+          <strong>Found it{store ? ` at ${store}` : ''}!</strong>
+          <span className="finder-sub">
+            {missing.length ? `Couldn’t find the ${joinWords(missing)}, so add ${missing.length > 1 ? 'those' : 'that'} below. ` : ''}
+            Change anything you like, then pick your stars.
+          </span>
+        </span>
+      </div>
+    );
+  }
+  return (
+    <div className="finder is-failed" role="status" aria-live="polite">
+      <span className="finder-gift" aria-hidden="true">🧑‍🎄</span>
+      <span className="finder-text">
+        <strong>No luck reading that page</strong>
+        <span className="finder-sub">{r.message}</span>
+      </span>
+      {r.status === 'failed' && <button type="button" className="btn btn-ghost btn-sm" onClick={onRetry}>Try again</button>}
+    </div>
+  );
+}
+
+const joinWords = (w: string[]) => (w.length <= 1 ? w.join('') : `${w.slice(0, -1).join(', ')} or ${w[w.length - 1]}`);
+
+function DescStatus({ loading, source }: { loading: boolean; source: DescriptionSource }) {
+  if (loading) return <span className="desc-status is-loading"><span className="dot-pulse" /> Reading page</span>;
   if (source === 'ai') return <span className="desc-status is-ai"><SparkIcon size={13} /> AI summary of the page</span>;
   if (source === 'page') return <span className="desc-status">From the product page</span>;
   if (source === 'manual') return <span className="desc-status">Written by you</span>;

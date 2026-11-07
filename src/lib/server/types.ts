@@ -40,3 +40,20 @@ export interface SharedItem {
   imageUrl: string;
   createdAt: string;
 }
+
+/** What the paste-a-link lookup found. Every field is optional: nothing is ever made up. */
+export interface ProductInfo {
+  name?: string;
+  imageUrl?: string;
+  description?: string;
+  /** 'ai' = summarised by AI from the page's text; 'page' = the page's own wording. */
+  descriptionSource?: 'ai' | 'page';
+  priceCents?: number;
+  store?: string;
+}
+
+/** Shape returned by POST /api/product. */
+export type ProductResponse =
+  | { status: 'found'; product: ProductInfo; via: 'page' | 'service'; cached?: boolean }
+  | { status: 'failed'; product: ProductInfo; message: string }
+  | { status: 'invalid_url'; product: ProductInfo; message: string };

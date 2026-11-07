@@ -231,7 +231,7 @@ export function CreatorApp({ userId, name: initialName, initial, animNote, showP
                 </button>
                 <button type="button" className="btn btn-soft" onClick={() => setCameraOpen(true)}>Take a new photo</button>
                 <button type="button" className="btn btn-soft" onClick={() => fileRef.current?.click()}>Upload a different photo</button>
-                <Link className="btn btn-gold" href="/">Save &amp; see it on the dashboard</Link>
+                <Link className="btn btn-soft" href="/">See it on the dashboard</Link>
               </div>
             )}
 
@@ -256,6 +256,9 @@ export function CreatorApp({ userId, name: initialName, initial, animNote, showP
                 {hasPhoto && <button type="button" className="btn btn-ghost btn-sm btn-quiet-danger" onClick={() => setConfirm('photo')}>Delete my photo</button>}
                 <Link className="btn btn-ghost btn-sm" href="/my-list">{isNew ? 'Skip for now' : 'I don’t want a character'}</Link>
               </div>
+            )}
+            {character && (
+              <Link className="btn btn-gold btn-go-list" href="/my-list">🎁 GO TO MY LIST</Link>
             )}
           </section>
         </div>
