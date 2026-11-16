@@ -1,5 +1,5 @@
 'use client';
-import { useLayoutEffect, useRef, useState, type FormEvent } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState, type FormEvent } from 'react';
 import type { ProductResponse } from '../lib/server/types';
 import { lookupProduct, uploadItemImage } from '../lib/productClient';
 import { centsToInput, formatUSD, parsePrice } from '../lib/money';
@@ -9,12 +9,16 @@ import type { DescriptionSource, ItemDraft, WishlistItem } from '../types';
 import { RefreshIcon, SparkIcon } from './Icons';
 import { Modal } from './Modal';
 import { StarRating } from './StarRating';
+import { PasteLinkButton, ShopShortcuts } from './ShopShortcuts';
+import { clearDraft, loadDraft, saveDraft } from '../lib/itemDraft';
 
 interface Props {
   open: boolean;
   editing: WishlistItem | null;
   onClose: () => void;
   onSave: (draft: ItemDraft) => void;
+  /** A link shared into the app (from a store app's Share button). */
+  initialUrl?: string;
 }
 
 type Lookup =
@@ -24,7 +28,7 @@ type Lookup =
 
 type Field = 'name' | 'price' | 'image' | 'desc';
 
-export function ItemForm({ open, editing, onClose, onSave }: Props) {
+export function ItemForm({ open, editing, onClose, onSave, initialUrl }: Props) {
   const [name, setName] = useState('');
   const [url, setUrl] = useState('');
   const [price, setPrice] = useState('');
@@ -76,6 +80,30 @@ export function ItemForm({ open, editing, onClose, onSave }: Props) {
     return () => { if (autoFind) clearTimeout(autoFind); abortRef.current?.abort(); if (debounceRef.current) clearTimeout(debounceRef.current); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, editing]);
+
+  // ---- Added: keep a half-filled new item safe while you visit a store app, and accept shared links ----
+  const [restored, setRestored] = useState(false);
+  const fieldsRef = useRef({ name, url, price, rating, description, reason, privateNote, imageUrl });
+  fieldsRef.current = { name, url, price, rating, description, reason, privateNote, imageUrl };
+  useEffect(() => {
+    if (!open || editing) return;
+    const d = loadDraft();
+    if (d) {
+      setName(d.name); setUrl(d.url); setPrice(d.price); setRating(d.rating || 3); setDescription(d.description);
+      setReason(d.reason); setPrivateNote(d.privateNote); setImageUrl(d.imageUrl);
+      mine.current = { name: Boolean(d.name), price: Boolean(d.price), image: Boolean(d.imageUrl), desc: Boolean(d.description) };
+      if (d.description) setDescSource('page');
+      setRestored(true);
+    }
+    if (initialUrl && parseUrl(initialUrl).ok) { setUrl(initialUrl); setTimeout(() => runLookup(initialUrl), 60); }
+    const keep = () => saveDraft(fieldsRef.current);
+    const onVis = () => { if (document.visibilityState === 'hidden') keep(); };
+    document.addEventListener('visibilitychange', onVis);
+    window.addEventListener('pagehide', keep);
+    return () => { document.removeEventListener('visibilitychange', onVis); window.removeEventListener('pagehide', keep); clearDraft(); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, editing]);
+  const keepDraftNow = () => saveDraft(fieldsRef.current);
 
   const urlCheck = parseUrl(url);
   const priceCheck = parsePrice(price);
@@ -199,6 +227,9 @@ export function ItemForm({ open, editing, onClose, onSave }: Props) {
           )}
           <FinderStatus lookup={lookup} store={store} hasPrice={detected != null} hasImage={hasImage}
             onRetry={() => runLookup(url, true)} />
+          {restored && <p className="draft-note" role="status">👍 We kept what you started. Paste your link to finish.</p>}
+          {!editing && <PasteLinkButton show={!url.trim()} onLink={(u) => { setUrl(u); setTouched((t) => ({ ...t, url: true })); runLookup(u); }} />}
+          {!editing && !url.trim() && <ShopShortcuts query={name} onLeave={keepDraftNow} />}
         </div>
 
         <div className={`field ${show('name') && nameError ? 'has-error' : ''}${glow('name')}`}>

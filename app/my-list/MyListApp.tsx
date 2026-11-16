@@ -17,6 +17,7 @@ import { Toasts, useToasts } from '@/components/Toasts';
 import { Toolbar } from '@/components/Toolbar';
 import { TotalPanel } from '@/components/TotalPanel';
 import { useMyWishlist } from '@/hooks/useMyWishlist';
+import { hasDraft } from '@/lib/itemDraft';
 import { downloadCSV } from '@/lib/csv';
 import { AVATARS, possessive } from '@/lib/items';
 import { sumCents } from '@/lib/money';
@@ -38,6 +39,19 @@ export function MyListApp({ profile, wishlist, initialItems, anonymous, characte
   const [shareOpen, setShareOpen] = useState(false);
   const [slug, setSlug] = useState(wishlist.share_slug);
   const [shareWithFamily, setShareWithFamily] = useState(wishlist.share_with_family);
+  // Added: a link shared from a store app (?add=...), or an unfinished item from before, opens Add item.
+  const [sharedUrl, setSharedUrl] = useState<string | undefined>(undefined);
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const add = params.get('add');
+    if (add) {
+      setSharedUrl(add);
+      setEditing(null); setFormOpen(true);
+      window.history.replaceState(null, '', window.location.pathname);
+    } else if (hasDraft()) {
+      setEditing(null); setFormOpen(true);
+    }
+  }, []);
   const [highlight, setHighlight] = useState<string | null>(null);
   const [dragId, setDragId] = useState<string | null>(null);
   const dragOver = useRef<string | null>(null);
@@ -182,7 +196,7 @@ export function MyListApp({ profile, wishlist, initialItems, anonymous, characte
       </main>
 
       <button type="button" className="fab" onClick={openAdd}><PlusIcon size={22} /> Add item</button>
-      <ItemForm key={formOpen ? editing?.id ?? 'new' : 'closed'} open={formOpen} editing={editing} onClose={() => setFormOpen(false)} onSave={save} />
+      <ItemForm key={formOpen ? editing?.id ?? 'new' : 'closed'} open={formOpen} editing={editing} onClose={() => { setFormOpen(false); setSharedUrl(undefined); }} onSave={(d) => { setSharedUrl(undefined); save(d); }} initialUrl={editing ? undefined : sharedUrl} />
       <ConfirmDialog open={confirmClear} title="Clear your whole wishlist?" confirmLabel="Clear wishlist"
         message={`This deletes all ${items.length} items for everyone who has your link. It can’t be undone.`}
         onCancel={() => setConfirmClear(false)}
