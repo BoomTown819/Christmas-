@@ -83,3 +83,12 @@ input[type=checkbox], input[type=radio] { width: 22px; height: 22px; accent-colo
 /* Character activity choices */
 .activity-opt { min-height: 48px; }
 .toast button { min-height: 44px; padding: 0 16px; font-size: 14.5px; }
+
+/* Your ornament preview on sign-up and profile: always visible, centered above the choices. */
+.avatar-picker { flex-direction: column; align-items: stretch; gap: 14px; }
+.avatar-picker .avatar-preview {
+  display: grid !important; place-items: center; gap: 8px; padding: 18px 12px 14px; border-radius: 18px;
+  background: radial-gradient(circle at 50% 35%, #1d5a3c 0%, #0d3b27 70%);
+}
+.avatar-picker .avatar-preview > * { transform: scale(1.35); transform-origin: center; margin: 10px 0 8px; }
+.avatar-picker .avatar-preview::after { content: 'Your ornament'; color: #f6efdd; font-weight: 700; font-size: 14px; letter-spacing: 0.02em; }
