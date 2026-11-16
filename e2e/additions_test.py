@@ -88,7 +88,7 @@ with sync_playwright() as p:
     expect(shop.get_by_role("link", name="Search Amazon for lego castle")).to_have_attribute("href", "https://www.amazon.com/s?k=lego%20castle")
     expect(shop.get_by_role("link", name="Search Target for lego castle")).to_have_attribute("href", re.compile(r"target\.com/s\?searchTerm=lego%20castle"))
     shop.get_by_role("radio", name="🛒 Go to my cart").click()
-    expect(shop.get_by_role("link", name="Open my Amazon cart")).to_have_attribute("href", "https://www.amazon.com/gp/cart/view.html")
+    expect(shop.get_by_role("link", name="Open Amazon, then tap your cart")).to_have_attribute("href", "https://www.amazon.com/")
     expect(shop.get_by_role("link", name="Open my Walmart cart")).to_have_attribute("href", "https://www.walmart.com/cart")
     for a in shop.get_by_role("link").all(): assert a.get_attribute("target") == "_blank"
     shot(sonny, "add-shop-shortcuts")
@@ -98,7 +98,7 @@ with sync_playwright() as p:
     sonny.evaluate(f"navigator.clipboard.writeText('Look at this! {FX}/product great reviews')")
     with sonny.context.expect_page() as store_tab:
         sonny.route("https://www.amazon.com/**", lambda r: r.fulfill(body="<title>store</title>", content_type="text/html"))
-        shop.get_by_role("link", name="Open my Amazon cart").click()
+        shop.get_by_role("link", name="Open Amazon, then tap your cart").click()
     store_tab.value.close()
     expect(sonny.locator("#f-name")).to_have_value("lego castle")
     sonny.get_by_role("button", name="📋 Paste link").click()
