@@ -78,7 +78,6 @@ Privacy: photos live in `character_photos`, readable only by their owner. Charac
 Family members can add gift ideas to someone else's list ("Dad keeps mentioning golf gloves"), with an optional link that fills itself in. Other family gift buyers can claim an idea ("I'll get this!") and mark it bought. The list's owner never sees ideas: `gift_ideas` has no policies and no table permissions, and every idea function returns nothing (or the same refusal) to the owner, to strangers and to signed-out visitors.
 
 ## Adding items from stores
-- **Add item** has big store buttons (Amazon, Target, Walmart, Best Buy, Etsy, eBay, Apple, Nike). With an item name typed they search for it; **Go to my cart** opens that store's cart (in the store's app on a phone, when installed). Websites can't read what's inside a store cart, so these only take you there.
 - **📋 Paste link** fills in a link copied in the store app. Whatever you'd typed is kept while you're away, even if the phone reloads the page.
 - **Share → Our Christmas** (Android, after adding the site to the home screen): the app manifest registers `/add` as a share target, which opens Add item with the shared link.
 

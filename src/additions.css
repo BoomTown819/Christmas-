@@ -38,26 +38,4 @@
 .paste-btn { min-height: 48px; }
 .paste-btn.is-calling { animation: paste-call 1.2s ease-in-out 3; }
 @keyframes paste-call { 0%, 100% { box-shadow: 0 0 0 0 rgb(216 181 106 / 0); } 50% { box-shadow: 0 0 0 7px rgb(216 181 106 / 0.45); } }
-.shop { display: grid; gap: 10px; padding: 14px; border-radius: 16px; background: var(--surface-2); border: 1px solid var(--line); }
-.shop-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; }
-.shop-title { font-weight: 700; font-size: 15px; }
-.shop-toggle { display: inline-flex; padding: 4px; gap: 4px; border-radius: 999px; background: var(--bg); border: 1px solid var(--line); max-width: 100%; }
-.shop-toggle button {
-  min-height: 40px; padding: 0 14px; border: 0; border-radius: 999px; background: none; color: var(--muted);
-  font: inherit; font-weight: 700; font-size: 14px; cursor: pointer; white-space: nowrap;
-}
-.shop-toggle button.is-on { background: var(--surface); color: var(--ink); box-shadow: 0 1px 3px rgb(0 0 0 / 0.12); }
-.shop-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(118px, 1fr)); gap: 8px; }
-.shop-btn {
-  display: flex; align-items: center; gap: 8px; min-height: 48px; padding: 0 12px; border-radius: 12px;
-  background: var(--surface); border: 1px solid var(--line); color: var(--ink); font-weight: 700; font-size: 14.5px; text-decoration: none;
-}
-.shop-btn:hover { border-color: var(--gold); }
-.shop-btn:focus-visible { outline: 3px solid var(--gold); outline-offset: 2px; }
-.shop-dot { width: 14px; height: 14px; border-radius: 50%; flex: none; }
-.shop-steps { margin: 0; font-size: 13.5px; color: var(--muted); }
 .draft-note { margin: 0; padding: 10px 12px; border-radius: 12px; background: var(--gold-soft); font-size: 14px; font-weight: 600; }
-@media (max-width: 420px) {
-  .shop-toggle { width: 100%; } .shop-toggle button { flex: 1; padding: 0 8px; font-size: 13.5px; }
-  .shop-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-}

@@ -78,36 +78,23 @@ with sync_playwright() as p:
     expect(g.get_by_test_id("secret-ideas")).to_have_count(0); g.context.close()
     print("secret ideas ok")
 
-    # ---------- store shortcuts + cart links ----------
+    # ---------- Add item: no store box; Paste link still works ----------
     sonny.goto(BASE + "/my-list")
     sonny.get_by_role("button", name="Add item").first.click()
-    shop = sonny.get_by_test_id("shop-shortcuts")
-    expect(shop).to_be_visible()
-    expect(shop.get_by_role("link", name="Open Amazon")).to_have_attribute("href", "https://www.amazon.com/")
+    expect(sonny.get_by_test_id("shop-shortcuts")).to_have_count(0)
+    assert sonny.get_by_text("Go to my cart").count() == 0
     sonny.fill("#f-name", "lego castle")
-    expect(shop.get_by_role("link", name="Search Amazon for lego castle")).to_have_attribute("href", "https://www.amazon.com/s?k=lego%20castle")
-    expect(shop.get_by_role("link", name="Search Target for lego castle")).to_have_attribute("href", re.compile(r"target\.com/s\?searchTerm=lego%20castle"))
-    shop.get_by_role("radio", name="🛒 Go to my cart").click()
-    expect(shop.get_by_role("link", name="Open Amazon, then tap your cart")).to_have_attribute("href", "https://www.amazon.com/")
-    expect(shop.get_by_role("link", name="Open my Walmart cart")).to_have_attribute("href", "https://www.walmart.com/cart")
-    for a in shop.get_by_role("link").all(): assert a.get_attribute("target") == "_blank"
-    shot(sonny, "add-shop-shortcuts")
-
     # Leave for the "store", copy a link there, come back and tap Paste link. The form kept what was typed.
     sonny.fill("#f-price", "")
     sonny.evaluate(f"navigator.clipboard.writeText('Look at this! {FX}/product great reviews')")
-    with sonny.context.expect_page() as store_tab:
-        sonny.route("https://www.amazon.com/**", lambda r: r.fulfill(body="<title>store</title>", content_type="text/html"))
-        shop.get_by_role("link", name="Open Amazon, then tap your cart").click()
-    store_tab.value.close()
+    other = sonny.context.new_page(); other.close()      # pop over to another tab and back
     expect(sonny.locator("#f-name")).to_have_value("lego castle")
     sonny.get_by_role("button", name="📋 Paste link").click()
     expect(sonny.locator("#f-url")).to_have_value(FX + "/product")
     expect(sonny.locator("#f-price")).to_have_value("279.00", timeout=15000)
     expect(sonny.locator("#f-name")).to_have_value("lego castle")          # what you typed is never replaced
-    expect(sonny.get_by_test_id("shop-shortcuts")).to_have_count(0)        # shortcuts step aside once there's a link
     sonny.get_by_role("button", name="Cancel").click(); expect(sonny.locator(".modal")).to_have_count(0)
-    print("store shortcuts + paste ok")
+    print("paste link ok")
 
     # ---------- the phone throws the page away while you're in the store app: nothing is lost ----------
     sonny.get_by_role("button", name="Add item").first.click()

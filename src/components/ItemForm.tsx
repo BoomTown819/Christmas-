@@ -9,7 +9,7 @@ import type { DescriptionSource, ItemDraft, WishlistItem } from '../types';
 import { RefreshIcon, SparkIcon } from './Icons';
 import { Modal } from './Modal';
 import { StarRating } from './StarRating';
-import { PasteLinkButton, ShopShortcuts } from './ShopShortcuts';
+import { PasteLinkButton } from './ShopShortcuts';
 import { clearDraft, loadDraft, saveDraft } from '../lib/itemDraft';
 
 interface Props {
@@ -103,7 +103,6 @@ export function ItemForm({ open, editing, onClose, onSave, initialUrl }: Props) 
     return () => { document.removeEventListener('visibilitychange', onVis); window.removeEventListener('pagehide', keep); clearDraft(); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, editing]);
-  const keepDraftNow = () => saveDraft(fieldsRef.current);
 
   const urlCheck = parseUrl(url);
   const priceCheck = parsePrice(price);
@@ -229,7 +228,6 @@ export function ItemForm({ open, editing, onClose, onSave, initialUrl }: Props) 
             onRetry={() => runLookup(url, true)} />
           {restored && <p className="draft-note" role="status">👍 We kept what you started. Paste your link to finish.</p>}
           {!editing && <PasteLinkButton show={!url.trim()} onLink={(u) => { setUrl(u); setTouched((t) => ({ ...t, url: true })); runLookup(u); }} />}
-          {!editing && !url.trim() && <ShopShortcuts query={name} onLeave={keepDraftNow} />}
         </div>
 
         <div className={`field ${show('name') && nameError ? 'has-error' : ''}${glow('name')}`}>
