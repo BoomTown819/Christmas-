@@ -74,13 +74,6 @@ Setup: add `OPENAI_API_KEY` in Vercel → Settings → Environment Variables (ma
 
 Privacy: photos live in `character_photos`, readable only by their owner. Characters are visible to family. Anyone else sees one only on that person's shared list, or next to gifts they claim, if "Show my character outside my family" is on. Claimer characters come through `get_claims`, which returns nothing to the list's owner, so the secret-gift rule still holds. Decorative characters sit in hero, header and footer areas, and can't be clicked or tapped.
 
-## Secret gift ideas
-Family members can add gift ideas to someone else's list ("Dad keeps mentioning golf gloves"), with an optional link that fills itself in. Other family gift buyers can claim an idea ("I'll get this!") and mark it bought. The list's owner never sees ideas: `gift_ideas` has no policies and no table permissions, and every idea function returns nothing (or the same refusal) to the owner, to strangers and to signed-out visitors.
-
-## Adding items from stores
-- **📋 Paste link** fills in a link copied in the store app. Whatever you'd typed is kept while you're away, even if the phone reloads the page.
-- **Share → Our Christmas** (Android, after adding the site to the home screen): the app manifest registers `/add` as a share target, which opens Add item with the shared link.
-
 ## Families
 - Create a family, then **Invite family** to get a link and a code like `K7QM-3XPA` that you can send by Messages, Email or WhatsApp.
 - Someone opening the invitation can sign up right there and joins automatically afterwards.

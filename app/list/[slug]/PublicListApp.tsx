@@ -14,7 +14,6 @@ import { formatUSD, sumCents } from '@/lib/money';
 import { SORT_LABELS, sortItems } from '@/lib/organize';
 import { forgetOwnedList, isOwnedHere } from '@/lib/ownedLists';
 import { supabaseBrowser } from '@/lib/supabase/client';
-import { SecretIdeas } from './SecretIdeas';
 import type { Claim, PublicWishlist, SortKey, WishlistItem } from '@/types';
 
 const TOKENS_KEY = 'our-christmas:guest-claims';
@@ -184,8 +183,6 @@ function BuyerView({ list, items, viewerName, signedIn }: { list: PublicWishlist
           })}
         </div>
       )}
-
-      {signedIn && <SecretIdeas slug={list.slug} owner={owner} onToast={push} />}
 
       {items.length > 0 && <TotalPanel items={sortItems(items, sort)} totalCents={sumCents(items)} visibleCount={items.length} visibleCents={sumCents(items)} />}
 
