@@ -484,3 +484,32 @@ describe('name + PIN sign-in', () => {
     expect(mine).toEqual({ ok: false, reason: 'use_email' });
   });
 });
+
+describe('kicking someone out of a family (monkey mode)', () => {
+  let fam: string;
+  let a: Awaited<ReturnType<typeof signUp>>, b: Awaited<ReturnType<typeof signUp>>, c: Awaited<ReturnType<typeof signUp>>;
+  beforeAll(async () => {
+    a = await signUp(`KickA${run}`); b = await signUp(`KickB${run}`); c = await signUp(`KickC${run}`);
+    fam = (await a.db.rpc('create_family', { p_name: `Kick fam ${run}` })).data as string;
+    const { data: code } = await a.db.rpc('create_invitation', { p_family_id: fam });
+    await b.db.rpc('join_family', { p_code: code }); await c.db.rpc('join_family', { p_code: code });
+  });
+  const members = async () => ((await a.db.from('family_members').select('user_id, role').eq('family_id', fam)).data ?? []) as { user_id: string; role: string }[];
+
+  it('strangers and signed-out visitors can\'t kick anyone', async () => {
+    expect((await outsider.db.rpc('kick_family_member', { p_family_id: fam, p_user_id: b.id })).error).not.toBeNull();
+    expect((await guest().rpc('kick_family_member', { p_family_id: fam, p_user_id: b.id })).error).not.toBeNull();
+    expect(await members()).toHaveLength(3);
+  });
+
+  it('any member can kick any other member, even the organizer; organizer passes on', async () => {
+    expect((await c.db.rpc('kick_family_member', { p_family_id: fam, p_user_id: c.id })).error?.message).toMatch(/Leave family/);
+    expect((await c.db.rpc('kick_family_member', { p_family_id: fam, p_user_id: a.id })).error).toBeNull();   // a member kicks the organizer
+    const left = await (async () => ((await b.db.from('family_members').select('user_id, role').eq('family_id', fam)).data ?? []) as { user_id: string; role: string }[])();
+    expect(left.map((m) => m.user_id).sort()).toEqual([b.id, c.id].sort());
+    expect(left.find((m) => m.user_id === b.id)?.role).toBe('organizer');                                 // longest-standing member
+    expect((await a.db.rpc('get_family_dashboard', { p_family_id: fam })).error).not.toBeNull();          // kicked: can't see the family
+    expect((await a.db.from('wishlists').select('id').eq('owner_id', a.id)).data).toHaveLength(1);        // account and list untouched
+    expect((await a.db.rpc('kick_family_member', { p_family_id: fam, p_user_id: b.id })).error).not.toBeNull(); // no longer a member
+  });
+});

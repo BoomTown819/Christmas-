@@ -24,6 +24,10 @@ export function FamilyApp({ families }: { families: { id: string; name: string }
   const [inviteOpen, setInviteOpen] = useState(false);
   const [createOpen, setCreateOpen] = useState(false);
   const [leaving, setLeaving] = useState(false);
+  // 🐒 Monkey mode: a hidden switch that lets any member kick anyone out of the family.
+  const [monkey, setMonkey] = useState(false);
+  const [kicking, setKicking] = useState<FamilyMemberCard | null>(null);
+  const [kickMsg, setKickMsg] = useState<string | null>(null);
 
   useEffect(() => {
     try {
@@ -73,6 +77,15 @@ export function FamilyApp({ families }: { families: { id: string; name: string }
     );
   }
 
+  const kick = async () => {
+    if (!active || !kicking) return;
+    const who = kicking.display_name;
+    const { error: err } = await db.rpc('kick_family_member', { p_family_id: active, p_user_id: kicking.user_id });
+    setKicking(null);
+    setKickMsg(err ? err.message : `${who} was kicked out of the family. 🐒`);
+    load();
+  };
+
   const others = dash?.members.filter((m) => !m.is_me) ?? [];
   const me = dash?.members.find((m) => m.is_me);
 
@@ -97,10 +110,17 @@ export function FamilyApp({ families }: { families: { id: string; name: string }
       </section>
 
       {error && <div className="notice notice-warn">{error}</div>}
+      {monkey && (
+        <div className="monkey-banner" role="status" data-testid="monkey-banner">
+          <span>🐒 <strong>Monkey mode is on.</strong> Tap “Kick from family” on anyone to remove them. Tap the button to turn it off.</span>
+          <button type="button" className="btn btn-sm btn-ghost" onClick={() => { setMonkey(false); setKickMsg(null); }}>Turn off monkey mode</button>
+        </div>
+      )}
+      {kickMsg && <div className="notice" role="status">{kickMsg}</div>}
 
       <div className="members" data-testid="members">
         {me && <MemberCard m={me} />}
-        {others.map((m) => <MemberCard key={m.user_id} m={m} />)}
+        {others.map((m) => <MemberCard key={m.user_id} m={m} onKick={monkey ? () => setKicking(m) : undefined} />)}
         {dash && others.length === 0 && (
           <article className="member member-invite">
             <Ornament color="gold" size={34} />
@@ -113,10 +133,15 @@ export function FamilyApp({ families }: { families: { id: string; name: string }
 
       <div className="family-foot">
         <button type="button" className="btn btn-ghost btn-sm btn-quiet-danger" onClick={() => setLeaving(true)} disabled={!dash}>Leave {dash?.family.name ?? 'family'}</button>
+        {/* The hidden monkey. Faint on purpose: an Easter egg. */}
+        <button type="button" className={`monkey-egg${monkey ? ' is-on' : ''}`} aria-label="Monkey" title="" onClick={() => { setMonkey((v) => !v); setKickMsg(null); }} disabled={!dash}>🐒</button>
       </div>
 
       {dash && <InviteDialog open={inviteOpen} onClose={() => setInviteOpen(false)} dash={dash} onNewCode={load} />}
       <CreateFamily open={createOpen} onClose={() => setCreateOpen(false)} onCreated={(id) => { pick(id); router.refresh(); }} />
+      <ConfirmDialog open={Boolean(kicking)} title={`Kick ${kicking?.display_name ?? ''} out of ${dash?.family.name ?? 'the family'}?`} confirmLabel="Kick from family"
+        message={`${kicking?.display_name ?? 'They'} will disappear from this family’s dashboard and won’t see the family’s lists from here. Their account, wishlist and claimed gifts aren’t deleted, and they can rejoin with an invite code.`}
+        onCancel={() => setKicking(null)} onConfirm={kick} />
       <ConfirmDialog open={leaving} title={`Leave ${dash?.family.name}?`} confirmLabel="Leave family"
         message="Your wishlist stays yours, and your link still works. You just won’t appear on this family’s dashboard. You can rejoin with an invitation."
         onCancel={() => setLeaving(false)} onConfirm={leave} />
@@ -124,7 +149,7 @@ export function FamilyApp({ families }: { families: { id: string; name: string }
   );
 }
 
-function MemberCard({ m }: { m: FamilyMemberCard }) {
+function MemberCard({ m, onKick }: { m: FamilyMemberCard; onKick?: () => void }) {
   const shared = m.is_me || m.shared;
   // Clicking anywhere on the card (or the character) opens their list.
   const href = m.is_me ? '/my-list' : shared && m.share_slug ? `/list/${m.share_slug}` : null;
@@ -162,6 +187,12 @@ function MemberCard({ m }: { m: FamilyMemberCard }) {
             ? <Link className="btn btn-primary btn-sm" href={`/list/${m.share_slug}`}>View wishlist</Link>
             : <span className="muted small">Ask them for their link</span>}
       </footer>
+      {onKick && (
+        <div className="member-kick">
+          <p className="member-kick-info">{typeof m.item_count === 'number' ? `${m.item_count} ${m.item_count === 1 ? 'item' : 'items'} on their list` : 'List not shared with family'}{m.role === 'organizer' ? ' · organizer' : ''}</p>
+          <button type="button" className="btn btn-sm btn-kick" onClick={onKick}>🥾 Kick {m.display_name} from family</button>
+        </div>
+      )}
     </article>
   );
 }

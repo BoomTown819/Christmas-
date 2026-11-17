@@ -92,3 +92,21 @@ input[type=checkbox], input[type=radio] { width: 22px; height: 22px; accent-colo
 }
 .avatar-picker .avatar-preview > * { transform: scale(1.35); transform-origin: center; margin: 10px 0 8px; }
 .avatar-picker .avatar-preview::after { content: 'Your ornament'; color: #f6efdd; font-weight: 700; font-size: 14px; letter-spacing: 0.02em; }
+
+/* 🐒 Monkey mode (hidden Easter egg): the faint monkey at the bottom of the family page */
+.family-foot { position: relative; }
+.monkey-egg {
+  position: absolute; left: 0; bottom: 0; width: 44px; height: 44px; padding: 0; border: 0; background: none; cursor: pointer;
+  font-size: 15px; line-height: 44px; opacity: 0.09; filter: grayscale(1); transition: opacity 0.4s ease;
+}
+.monkey-egg:hover { opacity: 0.22; }
+.monkey-egg:focus-visible { opacity: 0.6; outline: 2px dashed var(--muted); outline-offset: 2px; }
+.monkey-egg.is-on { opacity: 1; filter: none; font-size: 24px; }
+.monkey-banner {
+  display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; margin: 0 0 16px;
+  padding: 12px 16px; border-radius: 14px; background: #fde8e6; border: 1px solid #f0b4ad; color: #6b1d16;
+}
+.member-kick { position: relative; z-index: 3; display: grid; gap: 6px; margin-top: 12px; padding-top: 12px; border-top: 1px dashed #f0b4ad; }
+.member-kick-info { margin: 0; font-size: 13.5px; color: var(--muted); }
+.btn-kick { background: #c4352b; color: #fff; border: 0; min-height: 46px; width: 100%; }
+.btn-kick:hover { background: #a92b22; }
