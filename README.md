@@ -89,6 +89,8 @@ When a page needs JavaScript or turns the server away, the app asks a link-previ
 
 Safety: only http/https links on normal ports, no usernames or passwords in links, every redirect re-checked, the network address is checked at the moment of connecting (so DNS tricks can't reach private networks), a 9 second timeout, a 2 MB cap, and 20 lookups per person per minute. Successful lookups are cached for 12 hours.
 
+**Stores that block the app (Amazon, Louis Vuitton…):** when a store turns the app away or its page is missing the name, picture or price, the server asks [Diffbot](https://www.diffbot.com)'s Product API to read the page and fills in only what's missing. Free plan: 10,000 lookups a month, no card. Add `DIFFBOT_TOKEN` in Vercel → Settings → Environment Variables. Prices are only used when they're in US dollars. Each lookup logs one line like `{"lookup":"amazon.com","page":"blocked","diffbot":"read",…}` (store name only) so you can see in Vercel's logs what's working.
+
 AI descriptions: the server fetches the product page (public addresses only, 8 second timeout, 2 MB cap) and asks Claude for one sentence using only the text it actually read. If a site blocks the request or has no readable product text, the form says so and you write it yourself. Nothing is made up.
 
 ---

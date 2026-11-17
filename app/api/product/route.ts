@@ -3,7 +3,7 @@ import { lookupProduct } from '@/lib/server/product';
 import { supabaseServer } from '@/lib/supabase/server';
 
 export const runtime = 'nodejs';
-export const maxDuration = 30;
+export const maxDuration = 60;
 
 // Per-person limit so nobody can use the server to hammer other websites.
 const hits = new Map<string, number[]>();

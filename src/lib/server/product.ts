@@ -84,6 +84,66 @@ export async function fetchViaService(url: URL): Promise<PageFacts | null> {
   }
 }
 
+/* ------------------------------------------------- Diffbot (product reader) */
+/**
+ * Diffbot reads a product page and returns its name, price, pictures and description.
+ * Free plan: 10,000 lookups a month. Only used when the store's own page didn't give us
+ * those (for example Amazon or Louis Vuitton turning the app away). Needs DIFFBOT_TOKEN.
+ */
+export async function fetchViaDiffbot(url: URL): Promise<PageFacts | null> {
+  const token = process.env.DIFFBOT_TOKEN;
+  if (!token) return null;
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), 20_000);
+  try {
+    const api = process.env.DIFFBOT_API_URL || 'https://api.diffbot.com';
+    const res = await fetch(`${api.replace(/\/$/, '')}/v3/product?token=${encodeURIComponent(token)}&url=${encodeURIComponent(url.toString())}&timeout=18000`, {
+      signal: ctrl.signal, headers: { Accept: 'application/json' },
+    });
+    if (!res.ok) { console.warn('[product] diffbot http', res.status); return null; }
+    const body = (await res.json()) as { objects?: Array<Record<string, unknown>>; error?: string };
+    const o = body.objects?.[0];
+    if (!o) { if (body.error) console.warn('[product] diffbot error', String(body.error).slice(0, 120)); return null; }
+    const str = (v: unknown) => (typeof v === 'string' && v.trim() ? v.replace(/\s+/g, ' ').trim() : undefined);
+    const title = str(o.title);
+    if (title && /robot check|captcha|access denied|are you a human|pardon our interruption|just a moment/i.test(title)) return null;
+    // Picture: the one Diffbot marks as the main picture, else the first.
+    const images = Array.isArray(o.images) ? (o.images as Array<{ url?: unknown; primary?: unknown }>) : [];
+    let imageUrl = str((images.find((i) => i.primary) ?? images[0])?.url);
+    if (imageUrl) {
+      try { const iu = new URL(imageUrl); imageUrl = /^https?:$/.test(iu.protocol) && imageUrl.length <= 2000 ? iu.toString() : undefined; } catch { imageUrl = undefined; }
+    }
+    // Price: only US dollars, only what Diffbot actually read from the page.
+    let priceCents: number | undefined;
+    const det = o.offerPriceDetails as { amount?: unknown; currencyCode?: unknown; symbol?: unknown } | undefined;
+    const usd = (code: unknown, symbol: unknown) => (code ? String(code).toUpperCase() === 'USD' : symbol === '$');
+    if (det && typeof det.amount === 'number' && det.amount > 0 && usd(det.currencyCode, det.symbol)) priceCents = Math.round(det.amount * 100);
+    if (priceCents == null) {
+      const m = str(o.offerPrice)?.match(/^\s*\$\s?(\d[\d,]*(?:\.\d{1,2})?)\s*$/);
+      if (m) priceCents = Math.round(Number(m[1].replace(/,/g, '')) * 100);
+    }
+    if (priceCents != null && !(priceCents > 0 && priceCents < 1_000_000_000)) priceCents = undefined;
+    const store = str(o.siteName) ?? knownStore(url.hostname) ?? url.hostname.replace(/^www\./, '');
+    const text = str(o.text)?.slice(0, 2000);
+    return {
+      title,
+      productName: title ? cleanName(title, store, url) : undefined,
+      name: title ? cleanName(title, store, url) : undefined,
+      productDescription: text,
+      description: text,
+      imageUrl,
+      priceCents,
+      store,
+      bodyText: '',
+    };
+  } catch (e) {
+    console.warn('[product] diffbot failed', (e as Error).name);
+    return null;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 /* ------------------------------------------------------------------ lookup */
 const FRIENDLY_FAIL = "We couldn't read that store's page automatically. No problem: fill in the details below.";
 
@@ -135,6 +195,24 @@ export async function lookupProduct(rawUrl: string, itemName = ''): Promise<Prod
   }
 
   let via: 'page' | 'service' = 'page';
+  const pageResult = facts ? 'read' : 'blocked';
+  let diffbotResult = 'not needed';
+  // The store's page was blocked or is missing the name, picture or price: ask Diffbot.
+  if (!facts || !facts.name || !facts.imageUrl || facts.priceCents == null) {
+    const db = await fetchViaDiffbot(target);
+    diffbotResult = !process.env.DIFFBOT_TOKEN ? 'no token' : db ? 'read' : 'failed';
+    if (db) {
+      if (!facts) { facts = db; via = 'service'; }
+      else {
+        // Keep what the store's own page gave us; fill the gaps from Diffbot.
+        if (!facts.name && db.name) { facts.name = db.name; facts.productName ??= db.productName; }
+        facts.imageUrl ??= db.imageUrl;
+        facts.priceCents ??= db.priceCents;
+        facts.productDescription ??= db.productDescription;
+        facts.description ??= db.description;
+      }
+    }
+  }
   // Page needed JavaScript, blocked us, or had almost nothing: try the browser-based preview service.
   if (!facts || (!facts.name && !facts.imageUrl) || !facts.imageUrl) {
     const service = await fetchViaService(target);
@@ -150,6 +228,10 @@ export async function lookupProduct(rawUrl: string, itemName = ''): Promise<Prod
       }
     }
   }
+
+  // A simple record of how lookups go (store name only, nothing about the person), to see what works.
+  console.info(JSON.stringify({ lookup: target.hostname.replace(/^www\./, ''), page: pageResult, diffbot: diffbotResult,
+    got: facts ? { name: Boolean(facts.name), picture: Boolean(facts.imageUrl), price: facts.priceCents != null } : null }));
 
   if (!facts || (!facts.name && !facts.imageUrl && facts.priceCents == null)) {
     return { status: 'failed', product: facts ? { store: facts.store } : { store: knownStore(target.hostname) }, message: failure };

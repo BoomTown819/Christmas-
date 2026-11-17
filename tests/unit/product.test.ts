@@ -204,3 +204,80 @@ describe('fetchPage network safety (real fetcher)', () => {
     }
   });
 });
+
+describe('Diffbot backup (when the store turns the app away)', () => {
+  const amazonBlocked = () => fetchPage.mockResolvedValue({
+    html: page('<title>Robot Check</title>', '<form action="/errors/validateCaptcha"></form>'),
+    finalUrl: new URL('https://www.amazon.com/dp/B0ABCDEFGH'),
+  });
+  const diffbotSays = (obj: Record<string, unknown> | null, status = 200) => {
+    const f = vi.fn(async (u: string) => {
+      if (String(u).includes('api.diffbot.com')) return new Response(JSON.stringify(obj ? { objects: [obj] } : { error: 'Could not download page (404)' }), { status });
+      return new Response(JSON.stringify({ status: 'fail' }), { status: 200 });   // Microlink: nothing
+    });
+    vi.stubGlobal('fetch', f);
+    return f;
+  };
+  beforeEach(async () => {
+    fetchPage.mockReset();
+    process.env.DIFFBOT_TOKEN = 'test-token';
+    delete process.env.ANTHROPIC_API_KEY;
+    (await import('@/lib/server/product'))._clearProductCache();
+  });
+  afterEach(() => { vi.unstubAllGlobals(); delete process.env.DIFFBOT_TOKEN; });
+
+  it('fills in name, price, picture and description from Diffbot when Amazon blocks the app', async () => {
+    const { lookupProduct } = await import('@/lib/server/product');
+    amazonBlocked();
+    const f = diffbotSays({
+      type: 'product', title: 'Amazon.com: LEGO Icons Christmas Village 10325 : Toys & Games',
+      text: 'A cozy winter village with 1,000+ pieces. Lights up.',
+      offerPrice: '$99.99', offerPriceDetails: { amount: 99.99, symbol: '$', currencyCode: 'USD' },
+      images: [{ url: 'https://m.media-amazon.com/images/I/small.jpg' }, { url: 'https://m.media-amazon.com/images/I/main.jpg', primary: true }],
+      siteName: 'Amazon',
+    });
+    const r = await lookupProduct('https://www.amazon.com/LEGO-Village/dp/B0ABCDEFGH?ref=abc');
+    expect(r).toMatchObject({ status: 'found', product: {
+      name: 'LEGO Icons Christmas Village 10325', priceCents: 9999, imageUrl: 'https://m.media-amazon.com/images/I/main.jpg',
+      description: 'A cozy winter village with 1,000+ pieces.', store: 'Amazon' } });
+    const call = String(f.mock.calls.find((c) => String(c[0]).includes('diffbot'))![0]);
+    expect(call).toContain('token=test-token');
+    expect(call).toContain(encodeURIComponent('https://www.amazon.com/dp/B0ABCDEFGH'));   // the clean product link
+  });
+
+  it('never invents a price: other currencies and junk are ignored', async () => {
+    const { lookupProduct } = await import('@/lib/server/product');
+    amazonBlocked();
+    diffbotSays({ title: 'Teddy', offerPrice: '20,00 €', offerPriceDetails: { amount: 20, symbol: '€', currencyCode: 'EUR' }, images: [{ url: 'https://x.com/t.jpg' }] });
+    const r = await lookupProduct('https://www.amazon.com/dp/B0ABCDEFGH');
+    expect(r.status).toBe('found');
+    expect(r.product.priceCents).toBeUndefined();
+    expect(r.product.name).toBe('Teddy');
+  });
+
+  it('is not used (no lookups spent) when the store page already had everything', async () => {
+    const { lookupProduct } = await import('@/lib/server/product');
+    const ld = { '@type': 'Product', name: 'Sled', image: 'https://cdn.example.com/sled.jpg', offers: { price: '59.00', priceCurrency: 'USD' } };
+    fetchPage.mockResolvedValue({ html: page(`<script type="application/ld+json">${JSON.stringify(ld)}</script>`), finalUrl: new URL('https://shop.example.com/sled') });
+    const f = diffbotSays({ title: 'nope' });
+    await lookupProduct('https://shop.example.com/sled');
+    expect(f.mock.calls.some((c) => String(c[0]).includes('diffbot'))).toBe(false);
+  });
+
+  it('fills only the gaps: keeps the store page\'s own details and adds the missing price', async () => {
+    const { lookupProduct } = await import('@/lib/server/product');
+    fetchPage.mockResolvedValue({ html: page('<meta property="og:title" content="Pocket Organizer"><meta property="og:image" content="https://lv.example/p.png">'), finalUrl: new URL('https://us.louisvuitton.com/p') });
+    diffbotSays({ title: 'Something else', offerPriceDetails: { amount: 470, currencyCode: 'USD' }, images: [{ url: 'https://lv.example/other.png' }] });
+    const r = await lookupProduct('https://us.louisvuitton.com/p');
+    expect(r.product).toMatchObject({ name: 'Pocket Organizer', imageUrl: 'https://lv.example/p.png', priceCents: 47000 });
+  });
+
+  it('a Diffbot error or no token still ends in the friendly message', async () => {
+    const { lookupProduct, _clearProductCache } = await import('@/lib/server/product');
+    amazonBlocked(); diffbotSays(null);
+    expect((await lookupProduct('https://www.amazon.com/dp/B0ABCDEFGH')).status).toBe('failed');
+    _clearProductCache(); delete process.env.DIFFBOT_TOKEN; const f = diffbotSays({ title: 'x' });
+    expect((await lookupProduct('https://www.amazon.com/dp/B0ABCDEFGH')).status).toBe('failed');
+    expect(f.mock.calls.some((c) => String(c[0]).includes('diffbot'))).toBe(false);
+  });
+});

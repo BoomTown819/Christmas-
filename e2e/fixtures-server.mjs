@@ -49,6 +49,18 @@ http.createServer((req, res) => {
   if (req.url === '/jsonly') { res.setHeader('content-type', 'text/html'); return res.end('<html><head><title>Tiny Shop</title></head><body><div id="root"></div><script src="/app.js"></script></body></html>'); }
   if (req.url === '/captcha') { res.setHeader('content-type', 'text/html'); return res.end('<html><head><title>Robot Check</title></head><body><form action="/errors/validateCaptcha"><input name="field-keywords"></form></body></html>'); }
   if (req.url === '/globe.svg') { res.setHeader('content-type', 'image/svg+xml'); return res.end(svg.replace('#333', '#2a6')); }
+  // Stand-in for Diffbot's Product API (used when a store blocks the app).
+  if (req.url.startsWith('/v3/product')) {
+    const target = new URL(req.url, 'http://x').searchParams.get('url') || '';
+    res.setHeader('content-type', 'application/json');
+    if (target.endsWith('/blocked-shop')) {
+      return res.end(JSON.stringify({ objects: [{ type: 'product', title: 'Cozy Knit Blanket', text: 'A chunky hand-knit throw. Machine washable.',
+        offerPrice: '$64.50', offerPriceDetails: { amount: 64.5, symbol: '$', currencyCode: 'USD' },
+        images: [{ url: 'http://127.0.0.1:9911/img.svg', primary: true }], siteName: 'Blanket Shop' }] }));
+    }
+    return res.end(JSON.stringify({ error: 'Could not download page (404)', errorCode: 404 }));
+  }
+  if (req.url === '/blocked-shop') { res.setHeader('content-type', 'text/html'); return res.end('<html><head><title>Robot Check</title></head><body><form action="/errors/validateCaptcha"></form></body></html>'); }
   if (req.url === '/product') { res.setHeader('content-type', 'text/html'); return setTimeout(() => res.end(product), 700); }
   if (req.url === '/img.svg') { res.setHeader('content-type', 'image/svg+xml'); return res.end(svg); }
   if (req.url === '/blocked') { res.statusCode = 403; return res.end('Forbidden'); }
