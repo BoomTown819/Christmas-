@@ -61,6 +61,7 @@ export default async function Home() {
         title={`Welcome back, ${profile?.display_name ?? 'friend'}! 🎅`}
         greeter={character ? <span className="walk-in"><CharacterSprite character={character} name={profile?.display_name} size={128} /></span> : undefined}
         sub="Everyone’s wishlists in one place. Claim gifts in secret, and stay out of your own surprises."
+        monkey={families.length > 0}
         actions={<><Link href="/my-list" className="btn btn-gold btn-lg">Open my wishlist</Link>{!character && <Link href="/character" className="btn btn-8bit">Generate my Christmas character 🎅</Link>}</>}
       />
       <FamilyApp families={families} />

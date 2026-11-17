@@ -2,15 +2,17 @@ import type { ReactNode } from 'react';
 import { DecorGuest } from '../character/Decor';
 import { Ornament, Present, Santa, SnowHills, Tree } from '../festive/Decorations';
 import { Snowfall } from '../Snowfall';
+import { MonkeyOrnament } from './MonkeyOrnament';
 
 /** The homepage hero: night sky, snow, trees, presents and a waving Santa. */
-export function Village({ eyebrow, title, sub, actions, greeter }: { eyebrow: ReactNode; title: ReactNode; sub: ReactNode; actions?: ReactNode; greeter?: ReactNode }) {
+export function Village({ eyebrow, title, sub, actions, greeter, monkey }: { eyebrow: ReactNode; title: ReactNode; sub: ReactNode; actions?: ReactNode; greeter?: ReactNode; monkey?: boolean }) {
   return (
     <section className="village">
       <Snowfall density={40} />
       <div className="hero-ornaments" aria-hidden="true">
-        <Ornament color="gold" className="o1" /><Ornament color="red" className="o2" size={24} /><Ornament color="green" className="o3" />
+        <Ornament color="gold" className="o1" /><Ornament color="red" className="o2" size={24} />{!monkey && <Ornament color="green" className="o3" />}
       </div>
+      {monkey && <MonkeyOrnament />}
       <div className="village-inner">
         <div className="village-copy">
           <p className="village-eyebrow">{eyebrow}</p>

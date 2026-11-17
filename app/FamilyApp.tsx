@@ -28,6 +28,12 @@ export function FamilyApp({ families }: { families: { id: string; name: string }
   const [monkey, setMonkey] = useState(false);
   const [kicking, setKicking] = useState<FamilyMemberCard | null>(null);
   const [kickMsg, setKickMsg] = useState<string | null>(null);
+  // The green ornament near the lights at the top of the homepage switches monkey mode on and off.
+  useEffect(() => {
+    const toggle = () => { setMonkey((v) => !v); setKickMsg(null); };
+    window.addEventListener('oc:monkey', toggle);
+    return () => window.removeEventListener('oc:monkey', toggle);
+  }, []);
 
   useEffect(() => {
     try {
@@ -108,15 +114,13 @@ export function FamilyApp({ families }: { families: { id: string; name: string }
         <h2 className="family-title"><span className="family-eyebrow">Our Christmas 🎄</span>{dash?.family.name ?? '…'}</h2>
         <p className="muted family-count">
           {dash ? `${dash.members.length} ${dash.members.length === 1 ? 'member' : 'members'}` : 'Loading…'}
-          {/* The little monkey: tap it to turn monkey mode on or off. */}
-          <button type="button" className={`monkey-egg${monkey ? ' is-on' : ''}`} aria-label="Monkey" aria-pressed={monkey} onClick={() => { setMonkey((v) => !v); setKickMsg(null); }} disabled={!dash}>🐒</button>
         </p>
       </section>
 
       {error && <div className="notice notice-warn">{error}</div>}
       {monkey && (
         <div className="monkey-banner" role="status" data-testid="monkey-banner">
-          <span>🐒 <strong>Monkey mode is on.</strong> Tap “Kick from family” on anyone to remove them. Tap the button to turn it off.</span>
+          <span>🐒 <strong>Monkey mode is on.</strong> Tap “Kick from family” on anyone to remove them.</span>
           <button type="button" className="btn btn-sm btn-ghost" onClick={() => { setMonkey(false); setKickMsg(null); }}>Turn off monkey mode</button>
         </div>
       )}

@@ -93,15 +93,13 @@ input[type=checkbox], input[type=radio] { width: 22px; height: 22px; accent-colo
 .avatar-picker .avatar-preview > * { transform: scale(1.35); transform-origin: center; margin: 10px 0 8px; }
 .avatar-picker .avatar-preview::after { content: 'Your ornament'; color: #f6efdd; font-weight: 700; font-size: 14px; letter-spacing: 0.02em; }
 
-/* 🐒 Monkey mode: a small monkey in the top corner of the family section */
-.family-count { display: inline-flex; align-items: center; gap: 4px; }
-.monkey-egg {
-  display: inline-grid; place-items: center; width: 34px; height: 34px; padding: 0; border: 0; border-radius: 50%;
-  background: none; cursor: pointer; font-size: 17px; line-height: 1; opacity: 0.55; transition: opacity 0.2s ease, transform 0.2s ease;
+/* 🐒 Monkey mode switch: the green ornament hanging near the lights on the homepage */
+.monkey-ornament {
+  position: absolute; right: 5%; top: 60px; z-index: 6; padding: 6px; margin: -6px; border: 0; background: none; cursor: pointer;
+  animation: orn-swing 4s ease-in-out infinite alternate; animation-delay: -3s; transform-origin: 50% 0; -webkit-tap-highlight-color: transparent;
 }
-.monkey-egg:hover { opacity: 1; transform: rotate(-12deg); }
-.monkey-egg:focus-visible { opacity: 1; outline: 2px solid var(--gold); outline-offset: 2px; }
-.monkey-egg.is-on { opacity: 1; background: #fde8e6; box-shadow: 0 0 0 2px #f0b4ad; }
+.monkey-ornament .ornament { display: block; }
+.monkey-ornament:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; border-radius: 12px; }
 .monkey-banner {
   display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; margin: 0 0 16px;
   padding: 12px 16px; border-radius: 14px; background: #fde8e6; border: 1px solid #f0b4ad; color: #6b1d16;
