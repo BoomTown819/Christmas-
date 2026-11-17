@@ -199,7 +199,7 @@ export function ItemForm({ open, editing, onClose, onSave, prefill }: Props) {
       }
     >
       <form id="item-form" className="form" onSubmit={submit} noValidate>
-        <div className={`field field-link ${show('url') && !urlCheck.ok ? 'has-error' : ''}`}>
+        <div className={`field field-link ${(submitted || (touched.url && url.trim() !== '')) && !urlCheck.ok ? 'has-error' : ''}`}>
           <label htmlFor="f-url">Product link</label>
           {!editing && !fromPage && <p className="field-hint bm-get">Shopping on Amazon or another store that won’t share? <Link href="/bookmark">Get the 🎁 Add to Our Christmas button</Link></p>}
           <input id="f-url" type="url" inputMode="url" value={url} autoComplete="off" {...(!editing ? { 'data-autofocus': true } : {})}
@@ -210,22 +210,24 @@ export function ItemForm({ open, editing, onClose, onSave, prefill }: Props) {
               if (parseUrl(pasted).ok) { e.preventDefault(); setUrl(pasted); runLookup(pasted); }
             }}
             onBlur={() => { setTouched((t) => ({ ...t, url: true })); if (url.trim() && url.trim() !== editing?.url && !(fromPage && url.trim() === prefill?.url)) runLookup(url); }} />
-          {show('url') && !urlCheck.ok && <p className="field-error">{urlCheck.error}</p>}
+          {(submitted || (touched.url && url.trim() !== '')) && !urlCheck.ok && <p className="field-error">{urlCheck.error}</p>}
+          <div className={`finder-slot${editing && lookup.state === 'idle' ? ' is-empty' : ''}`}>
           {lookup.state === 'idle' && !editing && (
             <p className="field-hint">Paste a link and we’ll fill in the name, picture, description and price for you. ✨</p>
           )}
           {fromPage && <p className="bm-note" role="status" data-testid="from-page">🎁 Filled in from the page you were on. Check it, pick your stars, and save.</p>}
           <FinderStatus lookup={lookup} store={store} hasPrice={detected != null} hasImage={hasImage}
             onRetry={() => runLookup(url, true)} />
+          </div>
         </div>
 
-        <div className={`field ${show('name') && nameError ? 'has-error' : ''}${glow('name')}`}>
+        <div className={`field ${submitted && nameError ? 'has-error' : ''}${glow('name')}`}>
           <label htmlFor="f-name">Item name</label>
           <input id="f-name" value={name} maxLength={200} placeholder={loading ? 'Looking for the name…' : 'e.g. AirPods Pro'} autoComplete="off"
             className={loading && !name ? 'is-shimmer' : ''}
             onChange={(e) => { setName(e.target.value); mine.current.name = true; }}
             onBlur={() => setTouched((t) => ({ ...t, name: true }))} />
-          {show('name') && nameError && <p className="field-error">{nameError}</p>}
+          {submitted && nameError && <p className="field-error">{nameError}</p>}
         </div>
 
         <div className={`field field-image${glow('image')}`}>
@@ -234,7 +236,7 @@ export function ItemForm({ open, editing, onClose, onSave, prefill }: Props) {
             <div className={`image-thumb image-thumb-lg${loading && !hasImage ? ' is-shimmer' : ''}`}>
               {hasImage
                 ? <img src={imageUrl} alt={name ? `Picture of ${name}` : 'Item picture'} referrerPolicy="no-referrer" onError={() => setImgBroken(true)} />
-                : <span>{loading ? '🎁' : uploading ? 'Uploading…' : 'No picture yet'}</span>}
+                : <span>{loading ? '🎁' : uploading ? 'Uploading…' : imgBroken && imageUrl ? 'Picture couldn’t load' : 'No picture yet'}</span>}
             </div>
             <div className="image-actions">
               <button type="button" className="btn btn-soft btn-sm" disabled={uploading} onClick={() => fileRef.current?.click()}>
@@ -249,8 +251,8 @@ export function ItemForm({ open, editing, onClose, onSave, prefill }: Props) {
               <input ref={fileRef} id="f-image-file" type="file" accept="image/*" hidden onChange={(e) => pickFile(e.target.files?.[0])} />
             </div>
           </div>
-          {imgBroken && imageUrl && <p className="field-note">That picture couldn’t be shown. Upload your own instead.</p>}
-          {!hasImage && result && result.status !== 'found' && (
+          {editing && imgBroken && imageUrl && <p className="field-note">That picture couldn’t be shown. Upload your own instead.</p>}
+          {editing && !hasImage && result && result.status !== 'found' && (
             <p className="field-note">Tip: on the store’s page, save the product photo (or take a screenshot) and upload it here. On a computer you can also right-click the photo, choose “Copy image address” and paste it under “Or paste a picture link”.</p>
           )}
           {uploadError && <p className="field-error">{uploadError}</p>}
@@ -265,7 +267,7 @@ export function ItemForm({ open, editing, onClose, onSave, prefill }: Props) {
             <label htmlFor="f-price">Price</label>
             <div className={`input-affix${loading && !price ? ' is-shimmer' : ''}`}>
               <span aria-hidden="true">$</span>
-              <input id="f-price" inputMode="decimal" value={price} placeholder="0.00" autoComplete="off"
+              <input id="f-price" inputMode="decimal" value={price} placeholder={found && detected == null ? "Not found, type it" : "0.00"} autoComplete="off"
                 onChange={(e) => { setPrice(e.target.value); mine.current.price = true; }}
                 onBlur={() => {
                   setTouched((t) => ({ ...t, price: true }));
@@ -274,7 +276,6 @@ export function ItemForm({ open, editing, onClose, onSave, prefill }: Props) {
                 }} />
             </div>
             {(submitted || (touched.price && price.trim() !== '')) && !priceCheck.ok && <p className="field-error">{priceCheck.error}</p>}
-            {found && detected == null && !price && <p className="field-note">Couldn’t find a price on that page. Add it here.</p>}
             {priceDiffers && (
               <button type="button" className="chip chip-gold" onMouseDown={(e) => e.preventDefault()} onClick={() => setPrice(centsToInput(detected!))}>
                 Use {formatUSD(detected!)} from the page
@@ -357,9 +358,8 @@ function FinderStatus({ lookup, store, hasPrice, hasImage, onRetry }: {
       <span className="finder-gift" aria-hidden="true">🧑‍🎄</span>
       <span className="finder-text">
         <strong>No luck reading that page</strong>
-        <span className="finder-sub">{r.message}</span>
+        <span className="finder-sub" title={r.message}>This store didn’t share its details. Fill them in below.</span>
       </span>
-      {r.status === 'failed' && <button type="button" className="btn btn-ghost btn-sm" onClick={onRetry}>Try again</button>}
     </div>
   );
 }

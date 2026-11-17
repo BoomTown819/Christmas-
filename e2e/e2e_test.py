@@ -189,7 +189,7 @@ with sync_playwright() as p:
     expect(sonny.locator("#f-name")).to_have_value("Frosty Snow Globe", timeout=15000)
     expect(sonny.locator(".image-thumb img")).to_have_attribute("src", "http://127.0.0.1:9911/globe.svg")
     expect(sonny.locator("#f-price")).to_have_value("")
-    expect(sonny.get_by_text("Couldn’t find a price on that page. Add it here.")).to_be_visible()
+    expect(sonny.locator("#f-price")).to_have_attribute("placeholder", "Not found, type it")
     sonny.get_by_role("button", name="Cancel").click()
     expect(sonny.locator(".modal")).to_have_count(0)
 

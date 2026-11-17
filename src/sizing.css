@@ -128,3 +128,14 @@ kbd { font-family: inherit; font-size: 0.9em; padding: 1px 6px; border-radius: 6
 .bm-get { margin: 0 0 4px; }
 .bm-step { display: block; align-self: start; } .bm-step ol { margin-top: 0; }
 .bm-update { grid-column: 1 / -1; }
+
+/* Add item: the link messages (hint / finding / found / no luck) sit in a fixed space,
+   so the stars and everything below never jump while you're tapping. */
+.finder-slot { min-height: 96px; display: grid; align-content: start; gap: 8px; }
+.finder-slot.is-empty { min-height: 0; }
+.finder-slot .finder { min-height: 0; }
+.finder.is-failed .btn { flex: none; }
+@media (min-width: 700px) { .finder-slot { min-height: 74px; } }
+/* The picture area keeps one size whether or not a picture (and its Remove button) is showing */
+.field-image .image-row { min-height: 148px; align-items: start; }
+@media (max-width: 380px) { .finder-slot { min-height: 104px; } }
