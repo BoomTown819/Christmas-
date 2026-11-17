@@ -106,7 +106,11 @@ export function FamilyApp({ families }: { families: { id: string; name: string }
 
       <section className="family-head">
         <h2 className="family-title"><span className="family-eyebrow">Our Christmas 🎄</span>{dash?.family.name ?? '…'}</h2>
-        <p className="muted">{dash ? `${dash.members.length} ${dash.members.length === 1 ? 'member' : 'members'}` : 'Loading…'}</p>
+        <p className="muted family-count">
+          {dash ? `${dash.members.length} ${dash.members.length === 1 ? 'member' : 'members'}` : 'Loading…'}
+          {/* The little monkey: tap it to turn monkey mode on or off. */}
+          <button type="button" className={`monkey-egg${monkey ? ' is-on' : ''}`} aria-label="Monkey" aria-pressed={monkey} onClick={() => { setMonkey((v) => !v); setKickMsg(null); }} disabled={!dash}>🐒</button>
+        </p>
       </section>
 
       {error && <div className="notice notice-warn">{error}</div>}
@@ -133,8 +137,6 @@ export function FamilyApp({ families }: { families: { id: string; name: string }
 
       <div className="family-foot">
         <button type="button" className="btn btn-ghost btn-sm btn-quiet-danger" onClick={() => setLeaving(true)} disabled={!dash}>Leave {dash?.family.name ?? 'family'}</button>
-        {/* The hidden monkey. Faint on purpose: an Easter egg. */}
-        <button type="button" className={`monkey-egg${monkey ? ' is-on' : ''}`} aria-label="Monkey" title="" onClick={() => { setMonkey((v) => !v); setKickMsg(null); }} disabled={!dash}>🐒</button>
       </div>
 
       {dash && <InviteDialog open={inviteOpen} onClose={() => setInviteOpen(false)} dash={dash} onNewCode={load} />}
