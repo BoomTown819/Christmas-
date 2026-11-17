@@ -108,3 +108,22 @@ input[type=checkbox], input[type=radio] { width: 22px; height: 22px; accent-colo
 .member-kick-info { margin: 0; font-size: 13.5px; color: var(--muted); }
 .btn-kick { background: #c4352b; color: #fff; border: 0; min-height: 46px; width: 100%; }
 .btn-kick:hover { background: #a92b22; }
+
+/* 🎁 Add to Our Christmas bookmark button page */
+.bm-grid { display: grid; gap: 18px; grid-template-columns: repeat(auto-fit, minmax(min(100%, 380px), 1fr)); margin-top: 8px; }
+.bm-step h2 { margin: 0 0 10px; font-size: 22px; }
+.bm-step ol { margin: 0 0 10px; padding-left: 22px; display: grid; gap: 8px; font-size: 16px; line-height: 1.45; }
+.bm-drag-row { display: flex; justify-content: center; padding: 14px 0 10px; }
+.bm-drag {
+  display: inline-flex; align-items: center; min-height: 56px; padding: 0 24px; border-radius: 999px; cursor: grab;
+  background: linear-gradient(180deg, #d94545, #a72a2a); color: #fff; font-weight: 800; font-size: 18px; text-decoration: none;
+  box-shadow: 0 6px 16px -6px rgb(167 42 42 / 0.6), inset 0 1px 0 rgb(255 255 255 / 0.25);
+}
+.bm-small { font-size: 14px; margin: 6px 0; }
+.bm-copy { width: 100%; margin: 6px 0 4px; }
+.bm-code { width: 100%; font-family: ui-monospace, monospace; font-size: 11px; color: var(--muted); resize: none; margin-top: 6px; }
+kbd { font-family: inherit; font-size: 0.9em; padding: 1px 6px; border-radius: 6px; border: 1px solid var(--line); background: var(--surface-2); }
+.bm-note { margin: 0; padding: 10px 12px; border-radius: 12px; background: var(--gold-soft); font-size: 14.5px; font-weight: 600; }
+.bm-get { font-size: 14px; }
+.bm-get { margin: 0 0 4px; }
+.bm-step { display: block; align-self: start; } .bm-step ol { margin-top: 0; }

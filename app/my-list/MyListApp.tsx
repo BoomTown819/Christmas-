@@ -32,6 +32,17 @@ export function MyListApp({ profile, wishlist, initialItems, anonymous, characte
   const [sort, setSort] = useState<SortKey>('custom');
   const [filter, setFilter] = useState<RatingFilter>('all');
   const [formOpen, setFormOpen] = useState(false);
+  // From the “Add to Our Christmas” bookmark button (/add): open Add item already filled in.
+  const [prefill, setPrefill] = useState<{ url?: string; name?: string; price?: string; image?: string; desc?: string } | undefined>(undefined);
+  useEffect(() => {
+    const sp = new URLSearchParams(window.location.search);
+    if (sp.get('bm') !== '1') return;
+    const g = (k: string) => sp.get(k) ?? undefined;
+    setPrefill({ url: g('url'), name: g('name'), price: g('price'), image: g('image'), desc: g('desc') });
+    setEditing(null); setFormOpen(true);
+    window.history.replaceState(null, '', window.location.pathname);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const [editing, setEditing] = useState<WishlistItem | null>(null);
   const [confirmClear, setConfirmClear] = useState(false);
   const [randomOpen, setRandomOpen] = useState(false);
@@ -182,7 +193,7 @@ export function MyListApp({ profile, wishlist, initialItems, anonymous, characte
       </main>
 
       <button type="button" className="fab" onClick={openAdd}><PlusIcon size={22} /> Add item</button>
-      <ItemForm key={formOpen ? editing?.id ?? 'new' : 'closed'} open={formOpen} editing={editing} onClose={() => setFormOpen(false)} onSave={save} />
+      <ItemForm key={formOpen ? editing?.id ?? 'new' : 'closed'} open={formOpen} editing={editing} onClose={() => { setFormOpen(false); setPrefill(undefined); }} onSave={(d) => { setPrefill(undefined); save(d); }} prefill={editing ? undefined : prefill} />
       <ConfirmDialog open={confirmClear} title="Clear your whole wishlist?" confirmLabel="Clear wishlist"
         message={`This deletes all ${items.length} items for everyone who has your link. It can’t be undone.`}
         onCancel={() => setConfirmClear(false)}

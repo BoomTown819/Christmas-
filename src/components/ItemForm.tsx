@@ -1,4 +1,5 @@
 'use client';
+import Link from 'next/link';
 import { useLayoutEffect, useRef, useState, type FormEvent } from 'react';
 import type { ProductResponse } from '../lib/server/types';
 import { lookupProduct, uploadItemImage } from '../lib/productClient';
@@ -15,6 +16,8 @@ interface Props {
   editing: WishlistItem | null;
   onClose: () => void;
   onSave: (draft: ItemDraft) => void;
+  /** Filled in by the “Add to Our Christmas” bookmark button, from the page you were on. */
+  prefill?: { url?: string; name?: string; price?: string; image?: string; desc?: string };
 }
 
 type Lookup =
@@ -24,7 +27,7 @@ type Lookup =
 
 type Field = 'name' | 'price' | 'image' | 'desc';
 
-export function ItemForm({ open, editing, onClose, onSave }: Props) {
+export function ItemForm({ open, editing, onClose, onSave, prefill }: Props) {
   const [name, setName] = useState('');
   const [url, setUrl] = useState('');
   const [price, setPrice] = useState('');
@@ -76,6 +79,19 @@ export function ItemForm({ open, editing, onClose, onSave }: Props) {
     return () => { if (autoFind) clearTimeout(autoFind); abortRef.current?.abort(); if (debounceRef.current) clearTimeout(debounceRef.current); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, editing]);
+
+  // From the bookmark button: fill in what it read from the product page (runs right after the reset above).
+  const [fromPage, setFromPage] = useState(false);
+  useLayoutEffect(() => {
+    if (!open || editing || !prefill) return;
+    if (prefill.url) setUrl(prefill.url);
+    if (prefill.name) { setName(prefill.name); mine.current.name = true; }
+    if (prefill.price) { const p = parsePrice(prefill.price); if (p.ok) { setPrice(centsToInput(p.cents)); mine.current.price = true; } }
+    if (prefill.image) { setImageUrl(prefill.image); mine.current.image = true; }
+    if (prefill.desc) { setDescription(prefill.desc); setDescSource('page'); mine.current.desc = true; }
+    setFromPage(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, editing, prefill]);
 
   const urlCheck = parseUrl(url);
   const priceCheck = parsePrice(price);
@@ -185,6 +201,7 @@ export function ItemForm({ open, editing, onClose, onSave }: Props) {
       <form id="item-form" className="form" onSubmit={submit} noValidate>
         <div className={`field field-link ${show('url') && !urlCheck.ok ? 'has-error' : ''}`}>
           <label htmlFor="f-url">Product link</label>
+          {!editing && !fromPage && <p className="field-hint bm-get">Shopping on Amazon or another store that won’t share? <Link href="/bookmark">Get the 🎁 Add to Our Christmas button</Link></p>}
           <input id="f-url" type="url" inputMode="url" value={url} autoComplete="off" {...(!editing ? { 'data-autofocus': true } : {})}
             placeholder="Paste a link from Amazon, Target, any store…"
             onChange={(e) => onUrlChange(e.target.value)}
@@ -192,11 +209,12 @@ export function ItemForm({ open, editing, onClose, onSave }: Props) {
               const pasted = e.clipboardData.getData('text').trim();
               if (parseUrl(pasted).ok) { e.preventDefault(); setUrl(pasted); runLookup(pasted); }
             }}
-            onBlur={() => { setTouched((t) => ({ ...t, url: true })); if (url.trim() && url.trim() !== editing?.url) runLookup(url); }} />
+            onBlur={() => { setTouched((t) => ({ ...t, url: true })); if (url.trim() && url.trim() !== editing?.url && !(fromPage && url.trim() === prefill?.url)) runLookup(url); }} />
           {show('url') && !urlCheck.ok && <p className="field-error">{urlCheck.error}</p>}
           {lookup.state === 'idle' && !editing && (
             <p className="field-hint">Paste a link and we’ll fill in the name, picture, description and price for you. ✨</p>
           )}
+          {fromPage && <p className="bm-note" role="status" data-testid="from-page">🎁 Filled in from the page you were on. Check it, pick your stars, and save.</p>}
           <FinderStatus lookup={lookup} store={store} hasPrice={detected != null} hasImage={hasImage}
             onRetry={() => runLookup(url, true)} />
         </div>
