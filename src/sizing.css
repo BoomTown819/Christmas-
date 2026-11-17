@@ -127,3 +127,4 @@ kbd { font-family: inherit; font-size: 0.9em; padding: 1px 6px; border-radius: 6
 .bm-get { font-size: 14px; }
 .bm-get { margin: 0 0 4px; }
 .bm-step { display: block; align-self: start; } .bm-step ol { margin-top: 0; }
+.bm-update { grid-column: 1 / -1; }

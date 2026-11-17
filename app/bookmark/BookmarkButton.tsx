@@ -18,6 +18,7 @@ export function BookmarkButton() {
   };
   return (
     <div className="bm-grid">
+      <p className="bm-note bm-update">🔄 Already have the button? Set it up again from this page and delete the old one. The new one keeps everything in one Our Christmas tab instead of opening a new tab each time.</p>
       <section className="panel bm-step">
         <h2>💻 On a computer</h2>
         <ol>

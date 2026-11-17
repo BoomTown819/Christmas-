@@ -85,8 +85,9 @@ function grab(ORIGIN: string) {
     image: /^https?:/.test(img) ? img.slice(0, 1900) : '', desc: t(desc).slice(0, 400),
   });
   const to = `${ORIGIN}/add?${p}`;
-  const w = window.open(to, '_blank');
-  if (!w) location.href = to;
+  // Always the same tab: if an Our Christmas tab was opened by this button before, reuse it and bring it forward.
+  const w = window.open(to, 'our-christmas-wishlist');
+  if (w) { try { w.focus(); } catch { /* ignore */ } } else location.href = to;
 }
 
 /** The bookmark's address: a tiny program that runs grab() on the current page. */
