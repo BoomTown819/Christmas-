@@ -41,11 +41,11 @@ export function BookmarkButton() {
           <li>Tap <strong>Copy the button</strong> below.</li>
           <li>Tap the Share button <span aria-hidden="true">⬆️</span>, then <strong>Add Bookmark</strong>. Name it <strong>Add to Our Christmas</strong> and save.</li>
           <li>Open your bookmarks <span aria-hidden="true">📖</span>, tap <strong>Edit</strong>, tap the new bookmark, delete its address and paste the copied button there. Tap <strong>Done</strong>.</li>
-          <li>On a product page in Safari, tap the address bar, type <strong>Add to</strong>, and tap <strong>Add to Our Christmas</strong>.</li>
+          <li>On a product page in Safari, open your bookmarks <span aria-hidden="true">📖</span> (at the bottom, or behind <strong>•••</strong>) and tap <strong>Add to Our Christmas</strong>. Open it from the bookmarks list: typing it into the address bar is blocked by Safari.</li>
         </ol>
         <button type="button" className="btn btn-gold btn-lg bm-copy" onClick={copy} disabled={!code}>{copied ? '✓ Copied!' : '📋 Copy the button'}</button>
         <p className="muted bm-small">In the Amazon app, the button can’t run. Tap Share → Copy link, paste the link into Safari, then use the button there.</p>
-        <p className="muted bm-small">Android (Chrome) works the same way: make a bookmark, paste the button as its address, then type its name in the address bar on a product page.</p>
+        <p className="muted bm-small">Android (Chrome) works the same way: make a bookmark, paste the button as its address, then open it from your bookmarks on a product page.</p>
         <textarea id="bm-code" className="bm-code" readOnly value={code} aria-label="The button’s code" rows={2} />
       </section>
     </div>
