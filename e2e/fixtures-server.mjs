@@ -60,6 +60,19 @@ http.createServer((req, res) => {
     }
     return res.end(JSON.stringify({ error: 'Could not download page (404)', errorCode: 404 }));
   }
+  // Stand-in for Jina Reader: /jina/<page address> returns that page's HTML as Jina's browser saw it.
+  if (req.url.startsWith('/jina/')) {
+    const target = decodeURIComponent(req.url.slice('/jina/'.length));
+    if (target.endsWith('/jina-shop')) {
+      res.setHeader('content-type', 'text/html');
+      return res.end(`<html><head><title>Amazon.com: Snow Globe</title></head><body><span id="productTitle">Glass Snow Globe with Village</span>
+        <img id="landingImage" data-old-hires="http://127.0.0.1:9911/img.svg" src="http://127.0.0.1:9911/img.svg">
+        <div id="corePrice_feature_div"><span class="a-price"><span class="a-offscreen">$32.95</span></span></div>
+        <div id="feature-bullets"><ul><li> Hand-blown glass globe with a tiny village inside. </li></ul></div>${'<p>more</p>'.repeat(40)}</body></html>`);
+    }
+    res.statusCode = 422; return res.end('{"code":422,"message":"could not read page"}');
+  }
+  if (req.url === '/jina-shop') { res.setHeader('content-type', 'text/html'); return res.end('<html><head><title>Robot Check</title></head><body><form action="/errors/validateCaptcha"></form></body></html>'); }
   if (req.url === '/blocked-shop') { res.setHeader('content-type', 'text/html'); return res.end('<html><head><title>Robot Check</title></head><body><form action="/errors/validateCaptcha"></form></body></html>'); }
   if (req.url === '/product') { res.setHeader('content-type', 'text/html'); return setTimeout(() => res.end(product), 700); }
   if (req.url === '/img.svg') { res.setHeader('content-type', 'image/svg+xml'); return res.end(svg); }

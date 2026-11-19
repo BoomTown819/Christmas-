@@ -84,6 +84,37 @@ export async function fetchViaService(url: URL): Promise<PageFacts | null> {
   }
 }
 
+/* --------------------------------------------- Jina Reader (no sign-up needed) */
+/**
+ * Jina Reader (r.jina.ai) opens a page in its own browser and hands back the page's HTML.
+ * Free with no account or key (about 20 lookups a minute). We read the returned HTML with
+ * the same extractor as everything else, so only what's really on the page is used.
+ * Set JINA_READER=off to stop using it; JINA_API_KEY (optional) raises its limits.
+ */
+export async function fetchViaJina(url: URL): Promise<PageFacts | null> {
+  const mode = (process.env.JINA_READER ?? 'on').toLowerCase();
+  if (mode === 'off' || mode === '0' || mode === 'none') return null;
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), 20_000);
+  try {
+    const base = process.env.JINA_READER_URL || 'https://r.jina.ai';
+    const headers: Record<string, string> = { 'x-respond-with': 'html', 'x-timeout': '15' };
+    if (process.env.JINA_API_KEY) headers.Authorization = `Bearer ${process.env.JINA_API_KEY}`;
+    const res = await fetch(`${base.replace(/\/$/, '')}/${url.toString()}`, { signal: ctrl.signal, headers });
+    if (!res.ok) { console.warn('[product] jina http', res.status); return null; }
+    const html = (await res.text()).slice(0, 3_000_000);
+    if (html.length < 200) return null;
+    const facts = extractFacts(html, url);
+    if (facts.looksBlocked) return null;
+    return facts.name || facts.imageUrl || facts.priceCents != null ? facts : null;
+  } catch (e) {
+    console.warn('[product] jina failed', (e as Error).name);
+    return null;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 /* ------------------------------------------------- Diffbot (product reader) */
 /**
  * Diffbot reads a product page and returns its name, price, pictures and description.
@@ -197,6 +228,24 @@ export async function lookupProduct(rawUrl: string, itemName = ''): Promise<Prod
   let via: 'page' | 'service' = 'page';
   const pageResult = facts ? 'read' : 'blocked';
   let diffbotResult = 'not needed';
+  let jinaResult = 'not needed';
+  // The store's page was blocked or is missing the name, picture or price: ask Jina Reader (no sign-up needed).
+  if (!facts || !facts.name || !facts.imageUrl || facts.priceCents == null) {
+    const jr = await fetchViaJina(target);
+    jinaResult = jr ? 'read' : 'failed';
+    if (jr) {
+      if (!facts) { facts = jr; via = 'service'; }
+      else {
+        if (!facts.name && jr.name) { facts.name = jr.name; facts.productName ??= jr.productName; }
+        facts.imageUrl ??= jr.imageUrl;
+        facts.priceCents ??= jr.priceCents;
+        facts.productDescription ??= jr.productDescription;
+        facts.description ??= jr.description;
+        facts.metaDescription ??= jr.metaDescription;
+        if (!facts.bodyText) facts.bodyText = jr.bodyText;
+      }
+    }
+  }
   // The store's page was blocked or is missing the name, picture or price: ask Diffbot.
   if (!facts || !facts.name || !facts.imageUrl || facts.priceCents == null) {
     const db = await fetchViaDiffbot(target);
@@ -230,7 +279,7 @@ export async function lookupProduct(rawUrl: string, itemName = ''): Promise<Prod
   }
 
   // A simple record of how lookups go (store name only, nothing about the person), to see what works.
-  console.info(JSON.stringify({ lookup: target.hostname.replace(/^www\./, ''), page: pageResult, diffbot: diffbotResult,
+  console.info(JSON.stringify({ lookup: target.hostname.replace(/^www\./, ''), page: pageResult, jina: jinaResult, diffbot: diffbotResult,
     got: facts ? { name: Boolean(facts.name), picture: Boolean(facts.imageUrl), price: facts.priceCents != null } : null }));
 
   if (!facts || (!facts.name && !facts.imageUrl && facts.priceCents == null)) {

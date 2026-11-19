@@ -143,9 +143,10 @@ describe('lookupProduct', () => {
     fetchPage.mockReset();
     delete process.env.ANTHROPIC_API_KEY;
     process.env.METADATA_SERVICE = 'microlink';
+    process.env.JINA_READER = 'off';   // these tests are about the Microlink backup
     (await import('@/lib/server/product'))._clearProductCache();
   });
-  afterEach(() => { vi.unstubAllGlobals(); delete process.env.METADATA_SERVICE; });
+  afterEach(() => { vi.unstubAllGlobals(); delete process.env.METADATA_SERVICE; delete process.env.JINA_READER; });
 
   it('shortens Amazon links and drops tracking before fetching, and caches the result', async () => {
     const { lookupProduct, canonicalProductUrl } = await import('@/lib/server/product');
@@ -279,5 +280,52 @@ describe('Diffbot backup (when the store turns the app away)', () => {
     _clearProductCache(); delete process.env.DIFFBOT_TOKEN; const f = diffbotSays({ title: 'x' });
     expect((await lookupProduct('https://www.amazon.com/dp/B0ABCDEFGH')).status).toBe('failed');
     expect(f.mock.calls.some((c) => String(c[0]).includes('diffbot'))).toBe(false);
+  });
+});
+
+describe('Jina Reader backup (no sign-up needed)', () => {
+  const AMAZON_HTML = `<html><head><title>Amazon.com: LEGO Icons Christmas Village : Toys &amp; Games</title></head><body>
+    <span id="productTitle"> LEGO Icons Christmas Village 10325 </span>
+    <img id="landingImage" data-old-hires="https://m.media-amazon.com/images/I/big.jpg" src="https://m.media-amazon.com/images/I/small.jpg">
+    <div id="corePrice_feature_div"><span class="a-price"><span class="a-offscreen">$99.99</span></span></div>
+    <div id="feature-bullets"><ul><li> A cozy winter village with 1,000+ pieces. </li></ul></div>${'<p>filler</p>'.repeat(30)}</body></html>`;
+  beforeEach(async () => {
+    fetchPage.mockReset();
+    delete process.env.DIFFBOT_TOKEN; delete process.env.ANTHROPIC_API_KEY;
+    (await import('@/lib/server/product'))._clearProductCache();
+    fetchPage.mockResolvedValue({ html: page('<title>Robot Check</title>', '<form action="/errors/validateCaptcha"></form>'), finalUrl: new URL('https://www.amazon.com/dp/B0ABCDEFGH') });
+  });
+  afterEach(() => { vi.unstubAllGlobals(); delete process.env.JINA_READER; });
+
+  it('reads the Amazon page through Jina when Amazon blocks the app', async () => {
+    const { lookupProduct } = await import('@/lib/server/product');
+    const f = vi.fn(async (u: string, init?: RequestInit) => String(u).startsWith('https://r.jina.ai/')
+      ? new Response(AMAZON_HTML, { status: 200, headers: { 'content-type': 'text/html' } })
+      : new Response(JSON.stringify({ status: 'fail' }), { status: 200 }));
+    vi.stubGlobal('fetch', f);
+    const r = await lookupProduct('https://www.amazon.com/LEGO/dp/B0ABCDEFGH?ref=x');
+    expect(r).toMatchObject({ status: 'found', product: { name: 'LEGO Icons Christmas Village 10325', priceCents: 9999,
+      imageUrl: 'https://m.media-amazon.com/images/I/big.jpg', store: 'Amazon' } });
+    expect(r.product.description).toMatch(/cozy winter village/);
+    const call = f.mock.calls.find((c) => String(c[0]).startsWith('https://r.jina.ai/'))!;
+    expect(String(call[0])).toBe('https://r.jina.ai/https://www.amazon.com/dp/B0ABCDEFGH');
+    expect((call[1] as RequestInit).headers).toMatchObject({ 'x-respond-with': 'html' });
+  });
+
+  it('a robot-check page from Jina counts as nothing, and the friendly message shows', async () => {
+    const { lookupProduct } = await import('@/lib/server/product');
+    vi.stubGlobal('fetch', vi.fn(async (u: string) => String(u).startsWith('https://r.jina.ai/')
+      ? new Response('<html><head><title>Robot Check</title></head><body><form action="/errors/validateCaptcha"></form>' + 'x'.repeat(300) + '</body></html>')
+      : new Response(JSON.stringify({ status: 'fail' }))));
+    expect((await lookupProduct('https://www.amazon.com/dp/B0ABCDEFGH')).status).toBe('failed');
+  });
+
+  it('can be switched off', async () => {
+    const { lookupProduct } = await import('@/lib/server/product');
+    process.env.JINA_READER = 'off';
+    const f = vi.fn(async () => new Response(JSON.stringify({ status: 'fail' })));
+    vi.stubGlobal('fetch', f);
+    await lookupProduct('https://www.amazon.com/dp/B0ABCDEFGH');
+    expect(f.mock.calls.some((c) => String(c[0]).includes('jina'))).toBe(false);
   });
 });
