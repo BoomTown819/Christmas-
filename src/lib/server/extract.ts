@@ -140,12 +140,16 @@ function storeSpecific($: Cheerio, facts: PageFacts) {
   if (!facts.imageUrl) {
     const land = $('#landingImage, #imgBlkFront, #ebooksImgBlkFront').first();
     facts.imageUrl = clean(land.attr('data-old-hires')) ?? largestDynamicImage(land.attr('data-a-dynamic-image')) ?? clean(land.attr('src'));
+    // Amazon's phone pages
+    facts.imageUrl ??= clean($('#main-image-container img, #main-image').first().attr('data-a-hires')) ?? clean($('#main-image').first().attr('src'));
   }
-  facts.productName ??= clean($('#productTitle').first().text());
+  facts.productName ??= clean($('#productTitle, #title_feature_div #title').first().text());
   facts.productDescription ??= clean($('#feature-bullets li').first().text());
   // Visible price elements on Amazon, Best Buy, Target, Walmart and common platforms.
   const priceSelectors = [
     '#corePrice_feature_div .a-offscreen', '#corePriceDisplay_desktop_feature_div .a-offscreen', '#priceblock_ourprice',
+    '#corePrice_mobile_feature_div .a-offscreen', '#corePriceDisplay_mobile_feature_div .a-offscreen', '#apex_desktop .a-price .a-offscreen',
+    '#apex_offerDisplay_mobile .a-price .a-offscreen', '#ppd .a-price:not(.a-text-price) .a-offscreen',
     '#priceblock_dealprice', '#price_inside_buybox', '.priceView-customer-price span[aria-hidden="true"]',
     '.priceView-hero-price span[aria-hidden="true"]', '[data-test="product-price"]', '[itemprop="price"]',
     '[data-automation-id="product-price"] [itemprop="price"]', '.product-price', '.price-current', '.price .money',

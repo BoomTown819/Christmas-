@@ -91,28 +91,51 @@ export async function fetchViaService(url: URL): Promise<PageFacts | null> {
  * the same extractor as everything else, so only what's really on the page is used.
  * Set JINA_READER=off to stop using it; JINA_API_KEY (optional) raises its limits.
  */
-export async function fetchViaJina(url: URL): Promise<PageFacts | null> {
-  const mode = (process.env.JINA_READER ?? 'on').toLowerCase();
-  if (mode === 'off' || mode === '0' || mode === 'none') return null;
+async function jinaOnce(url: URL, fresh: boolean, ms: number): Promise<PageFacts | 'blocked' | 'empty' | 'error'> {
   const ctrl = new AbortController();
-  const timer = setTimeout(() => ctrl.abort(), 20_000);
+  const timer = setTimeout(() => ctrl.abort(), ms);
   try {
     const base = process.env.JINA_READER_URL || 'https://r.jina.ai';
-    const headers: Record<string, string> = { 'x-respond-with': 'html', 'x-timeout': '15' };
+    const headers: Record<string, string> = { 'x-respond-with': 'html', 'x-timeout': String(Math.max(5, Math.floor(ms / 1000) - 3)) };
+    if (fresh) headers['x-no-cache'] = 'true';   // don't hand back a saved copy of a "prove you're human" page
     if (process.env.JINA_API_KEY) headers.Authorization = `Bearer ${process.env.JINA_API_KEY}`;
     const res = await fetch(`${base.replace(/\/$/, '')}/${url.toString()}`, { signal: ctrl.signal, headers });
-    if (!res.ok) { console.warn('[product] jina http', res.status); return null; }
+    if (!res.ok) { console.warn('[product] jina http', res.status); return 'error'; }
     const html = (await res.text()).slice(0, 3_000_000);
-    if (html.length < 200) return null;
+    if (html.length < 200) return 'empty';
     const facts = extractFacts(html, url);
-    if (facts.looksBlocked) return null;
-    return facts.name || facts.imageUrl || facts.priceCents != null ? facts : null;
+    if (facts.looksBlocked) return 'blocked';
+    return facts.name || facts.imageUrl || facts.priceCents != null ? facts : 'empty';
   } catch (e) {
     console.warn('[product] jina failed', (e as Error).name);
-    return null;
+    return 'error';
   } finally {
     clearTimeout(timer);
   }
+}
+
+/** Amazon's phone-style address for the same product (Amazon checks it less often). */
+function amazonMobileUrl(url: URL): URL | null {
+  if (!/(^|\.)amazon\.[a-z.]+$/i.test(url.hostname)) return null;
+  const asin = url.pathname.match(/\/dp\/([A-Z0-9]{10})/i)?.[1];
+  return asin ? new URL(`https://${url.hostname}/gp/aw/d/${asin}`) : null;
+}
+
+export async function fetchViaJina(url: URL, info: { result?: string } = {}): Promise<PageFacts | null> {
+  const mode = (process.env.JINA_READER ?? 'on').toLowerCase();
+  if (mode === 'off' || mode === '0' || mode === 'none') { info.result = 'off'; return null; }
+  const started = Date.now();
+  const first = await jinaOnce(url, false, 20_000);
+  if (typeof first === 'object') { info.result = 'read'; return first; }
+  // One more try when the store showed a robot check or an empty page: a fresh copy, and Amazon's phone address.
+  if ((first === 'blocked' || first === 'empty') && Date.now() - started < 15_000) {
+    const second = await jinaOnce(amazonMobileUrl(url) ?? url, true, 18_000);
+    if (typeof second === 'object') { info.result = 'read on 2nd try'; return second; }
+    info.result = `${first}, then ${second}`;
+    return null;
+  }
+  info.result = first;
+  return null;
 }
 
 /* ------------------------------------------------- Diffbot (product reader) */
@@ -231,8 +254,9 @@ export async function lookupProduct(rawUrl: string, itemName = ''): Promise<Prod
   let jinaResult = 'not needed';
   // The store's page was blocked or is missing the name, picture or price: ask Jina Reader (no sign-up needed).
   if (!facts || !facts.name || !facts.imageUrl || facts.priceCents == null) {
-    const jr = await fetchViaJina(target);
-    jinaResult = jr ? 'read' : 'failed';
+    const ji: { result?: string } = {};
+    const jr = await fetchViaJina(target, ji);
+    jinaResult = ji.result ?? (jr ? 'read' : 'failed');
     if (jr) {
       if (!facts) { facts = jr; via = 'service'; }
       else {

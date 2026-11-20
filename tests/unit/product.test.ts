@@ -320,6 +320,26 @@ describe('Jina Reader backup (no sign-up needed)', () => {
     expect((await lookupProduct('https://www.amazon.com/dp/B0ABCDEFGH')).status).toBe('failed');
   });
 
+  it('when Jina gets a robot check, it tries once more: fresh copy, Amazon phone page', async () => {
+    const { lookupProduct } = await import('@/lib/server/product');
+    const MOBILE = `<html><head><title>Amazon.com: Snow Globe</title></head><body>
+      <div id="title_feature_div"><span id="title"> Glass Snow Globe </span></div>
+      <div id="main-image-container"><img data-a-hires="https://m.media-amazon.com/images/I/globe.jpg" src="https://m.media-amazon.com/images/I/s.jpg"></div>
+      <div id="apex_offerDisplay_mobile"><span class="a-price"><span class="a-offscreen">$24.50</span></span></div>${'<p>filler</p>'.repeat(30)}</body></html>`;
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const f = vi.fn(async (u: string, _init?: RequestInit) => {
+      const s = String(u);
+      if (s === 'https://r.jina.ai/https://www.amazon.com/dp/B0ABCDEFGH') return new Response('<html><head><title>Robot Check</title></head><body><form action="/errors/validateCaptcha"></form>' + 'x'.repeat(300) + '</body></html>');
+      if (s === 'https://r.jina.ai/https://www.amazon.com/gp/aw/d/B0ABCDEFGH') return new Response(MOBILE);
+      return new Response(JSON.stringify({ status: 'fail' }));
+    });
+    vi.stubGlobal('fetch', f);
+    const r = await lookupProduct('https://www.amazon.com/gp/aw/d/B0ABCDEFGH?pd_rd_w=x');
+    expect(r).toMatchObject({ status: 'found', product: { name: 'Glass Snow Globe', priceCents: 2450, imageUrl: 'https://m.media-amazon.com/images/I/globe.jpg' } });
+    const second = f.mock.calls.find((c) => String(c[0]).includes('/gp/aw/d/'))!;
+    expect((second[1] as RequestInit).headers).toMatchObject({ 'x-no-cache': 'true' });
+  });
+
   it('can be switched off', async () => {
     const { lookupProduct } = await import('@/lib/server/product');
     process.env.JINA_READER = 'off';
